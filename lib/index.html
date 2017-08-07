@@ -7,9 +7,8 @@
 
     <title>Video Glitch</title>
 
-    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet"> -->
     <script src="VideoGlitch.js"></script>
-
     <style type="text/css">
       html, body {
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
@@ -45,21 +44,16 @@
   </head>
 
   <body>
-    <div id="video-container"></div>
-    <canvas id="video-glitch"></canvas>
+    <div id="container"></div>
 
     <script type="text/javascript">
-      var canvas = document.getElementById('video-glitch');
       var videoGlitch = new VideoGlitch();
 
-      videoGlitch.init(canvas);
-      videoGlitch.showStats();
+      // window.addEventListener('resize', function () {
+      //   videoGlitch.onResize(window.innerWidth, window.innerHeight);
+      // });
 
-      window.addEventListener('resize', function (event) {
-        videoGlitch.resize(window.innerWidth, window.innerHeight);
-      });
-
-      videoGlitch.resize(window.innerWidth, window.innerHeight);
+      // videoGlitch.onResize(window.innerWidth, window.innerHeight);
       videoGlitch.startExperiment();
     </script>
   </body>
