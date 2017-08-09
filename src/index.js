@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 
-export default class VideoGlitch
-{
+export default class VideoGlitch {
   constructor() {
     this._name = 'VideoGlitch';
-    this.maxSideLength = 1280;
     this.particles = null;
+
+    this.maxWidth = 1280;
+    this.maxHeight = 720;
   }
 
   startExperiment() {
@@ -30,7 +31,7 @@ export default class VideoGlitch
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(75, this.RATIO, 0.1, 4000);
-    this.camera.position.z = this.maxSideLength / 2.5;
+    this.camera.position.z = this.maxWidth / 2.5;
 
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -42,11 +43,30 @@ export default class VideoGlitch
   }
 
   onResize() {
-    const width = window.innerWidth, height = window.innerHeight;
+    let height = window.innerHeight;
+    let width = window.innerWidth;
 
+    if (width > this.maxWidth) {
+      width = this.maxWidth;
+      height = width / 16 * 9;
+    }
+
+    if (window.innerHeight < this.maxHeight) {
+      width = window.innerHeight / 9 * 16;
+      height = window.innerHeight;
+    }
+
+    this.WIDTH = width;
+    this.HEIGHT = height;
     this.RATIO = width / height;
-    this.camera.aspect = this.RATIO;
 
+    this.video.width = this.WIDTH;
+    this.video.height = this.HEIGHT;
+
+    this.canvas.width = this.WIDTH;
+    this.canvas.height = this.HEIGHT;
+
+    this.camera.aspect = this.RATIO;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
   }
@@ -57,7 +77,7 @@ export default class VideoGlitch
       vertexShader: require('./shaders/particles.vert'),
 
       uniforms: Object.assign([{
-        color: { type: 'v3', value: new THREE.Vector3(0, 0, 0)},
+        color: { type: 'v3', value: new THREE.Vector3(0, 0, 0) },
         tMap: { type: 't', value: null }
       }])
     });
@@ -92,11 +112,11 @@ export default class VideoGlitch
     const WIDTH = this.video.width;
 
     if (HEIGHT >= WIDTH) {
-      this.WIDTH = Math.round(this.maxSideLength * WIDTH / HEIGHT);
-      this.HEIGHT = this.maxSideLength;
+      this.WIDTH = Math.round(this.maxWidth * WIDTH / HEIGHT);
+      this.HEIGHT = this.maxWidth;
     } else {
-      this.HEIGHT = Math.round(this.maxSideLength * HEIGHT / WIDTH);
-      this.WIDTH = this.maxSideLength;
+      this.HEIGHT = Math.round(this.maxWidth * HEIGHT / WIDTH);
+      this.WIDTH = this.maxWidth;
     }
   }
 
@@ -115,9 +135,11 @@ export default class VideoGlitch
 
     const positions = new Float32Array(this.particles * 3);
     const colors = new Float32Array(this.particles * 3);
+    const sizes = new Float32Array(this.particles);
 
     this.geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-    this.geometry.addAttribute('customColor', new THREE.BufferAttribute(colors, 3));
+    this.geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+    this.geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
     this.particleSystem = new THREE.Points(this.geometry, this.shaderMaterial);
     this.scene.add(this.particleSystem);
@@ -125,7 +147,8 @@ export default class VideoGlitch
 
   _updateGeometry() {
     const positions = this.geometry.attributes.position.array;
-    const colors = this.geometry.attributes.customColor.array;
+    const colors = this.geometry.attributes.color.array;
+    const sizes = this.geometry.attributes.size.array;
 
     const HEIGHT_2 = this.HEIGHT / 2;
     const WIDTH_2 = this.WIDTH / 2;
@@ -140,15 +163,18 @@ export default class VideoGlitch
       const g = this.imageData[i4 + 1] / 255;
       const b = this.imageData[i4 + 2] / 255;
 
-      positions[i3] = (~~(0.5 + (i % this.WIDTH))) - WIDTH_2;
-      positions[i31] = -(~~(0.5 + (i / this.WIDTH))) + HEIGHT_2;
+      positions[i3] = (~~(i % this.WIDTH)) - WIDTH_2;
+      positions[i31] = -(~~(i / this.WIDTH)) + HEIGHT_2;
 
       colors[i3] = r;
       colors[i31] = g;
       colors[i32] = b;
+
+      sizes[i] = 1.0;
     }
 
-    this.geometry.attributes.customColor.needsUpdate = true;
     this.geometry.attributes.position.needsUpdate = true;
+    this.geometry.attributes.color.needsUpdate = true;
+    this.geometry.attributes.size.needsUpdate = true;
   }
 }
