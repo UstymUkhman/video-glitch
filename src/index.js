@@ -3,13 +3,15 @@ import * as THREE from 'three';
 export default class VideoGlitch {
   constructor() {
     this._name = 'VideoGlitch';
+
+    this.container = null;
     this.particles = null;
 
     this.maxWidth = 1280;
     this.maxHeight = 720;
   }
 
-  startExperiment() {
+  startExperiment(container) {
     this.video = document.createElement('video');
     this.video.src = 'assets/video.mp4';
 
@@ -19,26 +21,33 @@ export default class VideoGlitch {
     this.video.height = 360;
     this.video.width = 640;
 
-    this.video.oncanplay = () => {
-      this.video.play();
-      this._init();
-      this.onResize();
-    };
+    this.video.oncanplay = this._init.bind(this);
+
+    this.container = container;
+    this.container.appendChild(this.video);
   }
 
   _init() {
     this.canvas = document.createElement('canvas');
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera(75, this.RATIO, 0.1, 4000);
-    this.camera.position.z = this.maxWidth / 2.5;
+    this.camera = new THREE.PerspectiveCamera(45, this.RATIO, 1, 1000);
+    this.camera.position.z = 869;
 
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true
+    });
+
     this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.container.appendChild(this.renderer.domElement);
 
-    document.getElementById('container').appendChild(this.renderer.domElement);
+    this.onResize();
+    this.video.play();
 
-    this._createShaderMaterial();
+    this._setShaderMaterial();
+    this._setVideoSize();
+    this._setVideoParams();
     this._render();
   }
 
@@ -71,67 +80,43 @@ export default class VideoGlitch {
     this.renderer.setSize(width, height);
   }
 
-  _createShaderMaterial() {
+  _setShaderMaterial() {
     this.shaderMaterial = new THREE.ShaderMaterial({
       fragmentShader: require('./shaders/particles.frag'),
       vertexShader: require('./shaders/particles.vert'),
 
       uniforms: Object.assign([{
-        color: { type: 'v3', value: new THREE.Vector3(0, 0, 0) },
-        tMap: { type: 't', value: null }
+        color: {type: 'v3', value: new THREE.Vector3(0, 0, 0)},
+        tMap: {type: 't', value: null}
       }])
     });
   }
 
-  _render() {
-    if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-      if (this.video.videoHeight !== this.video.height || this.video.videoWidth !== this.video.width) {
+  _setVideoSize() {
+    const HEIGHT = this.video.videoHeight;
+    const WIDTH = this.video.videoWidth;
 
-        this.video.height = this.video.videoHeight;
-        this.video.width = this.video.videoWidth;
-
-        this._calcVideoSize();
-        this._updateTexture();
-      }
-
-      this.canvas.getContext('2d').drawImage(this.video,
-        0, 0, this.video.width, this.video.height,
-        0, 0, this.WIDTH, this.HEIGHT
-      );
-
-      this.imageData = this.canvas.getContext('2d').getImageData(0, 0, this.WIDTH, this.HEIGHT).data;
-      this._updateGeometry();
-    }
-
-    this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(this._render.bind(this));
-  }
-
-  _calcVideoSize() {
-    const HEIGHT = this.video.height;
-    const WIDTH = this.video.width;
+    this.video.height = HEIGHT;
+    this.video.width = WIDTH;
 
     if (HEIGHT >= WIDTH) {
       this.WIDTH = Math.round(this.maxWidth * WIDTH / HEIGHT);
       this.HEIGHT = this.maxWidth;
+
     } else {
       this.HEIGHT = Math.round(this.maxWidth * HEIGHT / WIDTH);
       this.WIDTH = this.maxWidth;
     }
   }
 
-  _updateTexture() {
-    this.canvas.height = this.HEIGHT;
-    this.canvas.width = this.WIDTH;
+  _setVideoParams() {
+    const context = this.canvas.getContext('2d');
 
-    this.canvas.getContext('2d').drawImage(this.video,
-      0, 0, this.video.width, this.video.height,
-      0, 0, this.WIDTH, this.HEIGHT
-    );
+    context.drawImage(this.video, 0, 0, this.WIDTH, this.HEIGHT);
 
-    this.imageData = this.canvas.getContext('2d').getImageData(0, 0, this.WIDTH, this.HEIGHT).data;
-    this.particles = this.canvas.width * this.canvas.height;
+    this.imageData = context.getImageData(0, 0, this.WIDTH, this.HEIGHT).data;
     this.geometry = new THREE.BufferGeometry();
+    this.particles = this.WIDTH * this.HEIGHT;
 
     const positions = new Float32Array(this.particles * 3);
     const colors = new Float32Array(this.particles * 3);
@@ -145,13 +130,27 @@ export default class VideoGlitch {
     this.scene.add(this.particleSystem);
   }
 
+  _render() {
+    if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+      const context = this.canvas.getContext('2d');
+
+      context.drawImage(this.video, 0, 0, this.WIDTH, this.HEIGHT);
+
+      this.imageData = context.getImageData(0, 0, this.WIDTH, this.HEIGHT).data;
+      this._updateGeometry();
+    }
+
+    this.renderer.render(this.scene, this.camera);
+    requestAnimationFrame(this._render.bind(this));
+  }
+
   _updateGeometry() {
     const positions = this.geometry.attributes.position.array;
     const colors = this.geometry.attributes.color.array;
     const sizes = this.geometry.attributes.size.array;
 
-    const HEIGHT_2 = this.HEIGHT / 2;
-    const WIDTH_2 = this.WIDTH / 2;
+    const HEIGHT_2 = this.HEIGHT / 2.0;
+    const WIDTH_2 = this.WIDTH / 2.0;
 
     for (let i = 0; i < this.particles; i++) {
       const i3 = i * 3;

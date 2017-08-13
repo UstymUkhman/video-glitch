@@ -30,7 +30,7 @@
         top: 0;
       }
 
-      canvas {
+      video, canvas {
         position: absolute;
         margin: auto;
         padding: 0;
@@ -48,9 +48,10 @@
 
     <script type="text/javascript">
       var videoGlitch = new VideoGlitch();
+      var container = document.getElementById('container');
 
       window.addEventListener('resize', videoGlitch.onResize.bind(videoGlitch));
-      videoGlitch.startExperiment();
+      videoGlitch.startExperiment(container);
     </script>
   </body>
 </html>
