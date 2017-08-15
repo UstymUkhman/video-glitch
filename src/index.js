@@ -145,8 +145,8 @@ export default class VideoGlitch {
       this.timeout = setTimeout(() => {
         if (this.mouseCoords.length) {
           this.mouseCoords = [
-            -Math.min(...this.mouseCoords),
-            -Math.max(...this.mouseCoords)
+            -Math.abs(Math.min(...this.mouseCoords)),
+            -Math.abs(Math.max(...this.mouseCoords))
           ];
 
           this.showGlitch = true;
@@ -168,11 +168,11 @@ export default class VideoGlitch {
         this._updateGeometry();
 
         setTimeout(() => {
-          this.showGlitch = false;
-          this.mouseCoords = [];
-
           this._clearGeometry();
-        }, 1000);
+
+          this.mouseCoords = [];
+          this.showGlitch = false;
+        }, 2500);
       }
     }
 
@@ -205,14 +205,16 @@ export default class VideoGlitch {
       const x = (~~(i % this.WIDTH));
       const y = -(~~(i / this.WIDTH));
 
-      positions[i3] = x - WIDTH_2 + 300;
-      positions[i31] = y + HEIGHT_2;
+      if (this._getPixelSize(x, y)) {
+        positions[i3] = x - WIDTH_2 + 300;
+        positions[i31] = y + HEIGHT_2;
 
-      colors[i3] = r;
-      colors[i31] = g;
-      colors[i32] = b;
+        colors[i3] = r;
+        colors[i31] = g;
+        colors[i32] = b;
 
-      sizes[i] = this._getPixelSize(x, y);
+        sizes[i] = 1.0;
+      }
     }
 
     this.geometry.attributes.position.needsUpdate = true;
@@ -231,11 +233,11 @@ export default class VideoGlitch {
       const horzDist = Math.abs(400 - 300);
 
       const hypot = Math.hypot(vertDist, horzDist);
-      const hypoStepY = Math.floor(hypot / vertDist);
-      const hypoStepX = Math.floor(hypot / horzDist);
+      const hypoStepY = hypot / vertDist;
+      const hypoStepX = hypot / horzDist;
 
       if ((x > 300 && y >= y1) || (x > 400 && y < y2)) {
-        return 1.0;
+        return false;
       }
 
       if (x >= 300 && x <= 400 && y <= y1 && y >= y2) {
@@ -244,16 +246,16 @@ export default class VideoGlitch {
           this.stepX += hypoStepY;
 
           this.xSteps.push(x);
-          return 1.0;
+          return false;
         }
       }
 
       if (x > this.stepX && !this.xSteps.includes(x)) {
-        return 1.0;
+        return true;
       }
     }
 
-    return 0.0;
+    return false;
   }
 
   _clearGeometry() {
