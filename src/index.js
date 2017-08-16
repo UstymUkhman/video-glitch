@@ -8,8 +8,8 @@ export default class VideoGlitch {
     this.container = null;
     this.particles = null;
 
-    this.maxWidth = 1280;
-    this.maxHeight = 720;
+    this.maxWidth = 960; // 1280
+    this.maxHeight = 540; // 720
 
     this.OFFSET = 200.0;
 
@@ -41,7 +41,7 @@ export default class VideoGlitch {
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(45, this.RATIO, 1, 1000);
-    this.camera.position.z = 869;
+    this.camera.position.z = Math.round(this.maxHeight / 0.82823);
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -97,15 +97,14 @@ export default class VideoGlitch {
       vertexShader: require('./shaders/particles.vert'),
 
       uniforms: Object.assign([{
-        color: {type: 'v3', value: new THREE.Vector3(0, 0, 0)},
-        tMap: {type: 't', value: null}
+        lines: {type: 'b', value: false}
       }])
     });
   }
 
   _setVideoSize() {
-    const HEIGHT = this.video.videoHeight;
-    const WIDTH = this.video.videoWidth;
+    const HEIGHT = 540; // this.video.videoHeight;
+    const WIDTH = 960; // this.video.videoWidth;
 
     this.video.height = HEIGHT;
     this.video.width = WIDTH;
@@ -232,9 +231,15 @@ export default class VideoGlitch {
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
     this.geometry.attributes.size.needsUpdate = true;
+
+    this.shaderMaterial.uniforms[0].lines.value = true;
+    this.shaderMaterial.needsUpdate = true;
   }
 
   _getPixelSize(x, y) {
+    const borderX = Math.max(this.x1, this.stepX);
+    const borderY = Math.min(this.y1, this.stepY);
+
     const vertDist = Math.abs(this.y2 - this.y1);
     const horzDist = Math.abs(this.x2 - this.x1);
 
@@ -242,18 +247,19 @@ export default class VideoGlitch {
     const hypoStepY = hypot / vertDist;
     const hypoStepX = hypot / horzDist;
 
-    if ((x > this.x1 && y >= this.y1) || (x > this.x2 && y < this.y2)) {
+    const maxX = x > this.x2;
+    const minY = y < this.y2;
+
+    if ((x > this.x1 && y >= this.y1) || (maxX && minY)) {
       return false;
     }
 
-    if (x >= this.x1 && x <= this.x2 && y <= this.y1 && y >= this.y2) {
-      if (y < this.stepY && x > this.stepX) {
-        this.stepY -= hypoStepX;
-        this.stepX += hypoStepY;
+    if (!maxX && !minY && y < borderY && x > borderX) {
+      this.stepY -= hypoStepX;
+      this.stepX += hypoStepY;
 
-        this.xSteps.push(x);
-        return false;
-      }
+      this.xSteps.push(x);
+      return false;
     }
 
     if (x > this.stepX && !this.xSteps.includes(x)) {
