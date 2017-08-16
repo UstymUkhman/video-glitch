@@ -7,6 +7,6 @@ void main(void) {
   //   discard;
   // }
 
-  // gl_FragColor = vec4(vColor, 1.0);
-  gl_FragColor = vec4(vec3(0.0), 0.8);
+  gl_FragColor = vec4(vColor, 1.0);
+  // gl_FragColor = vec4(vec3(0.0), 0.8);
 }

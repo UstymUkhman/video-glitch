@@ -3,13 +3,21 @@ import * as THREE from 'three';
 export default class VideoGlitch {
   constructor() {
     this._name = 'VideoGlitch';
-    this.mouseCoords = [];
+    this.mouseCoords = [[], []];
 
     this.container = null;
     this.particles = null;
 
     this.maxWidth = 1280;
     this.maxHeight = 720;
+
+    this.OFFSET = 200.0;
+
+    this.x1 = null;
+    this.x2 = null;
+
+    this.y1 = null;
+    this.y2 = null;
   }
 
   startExperiment(container) {
@@ -134,23 +142,35 @@ export default class VideoGlitch {
 
   _setUserEvents() {
     const videoData = this.video.getBoundingClientRect();
+    const videoLeft = Math.floor(videoData.left);
     const videoTop = Math.floor(videoData.top);
 
     this.video.addEventListener('mousemove', (event) => {
       if (this.showGlitch) return;
       clearTimeout(this.timeout);
 
-      this.mouseCoords.push(event.y - videoTop);
+      this.mouseCoords[0].push(event.x - videoLeft);
+      this.mouseCoords[1].push(event.y - videoTop);
 
       this.timeout = setTimeout(() => {
         if (this.mouseCoords.length) {
-          this.mouseCoords = [
-            -Math.abs(Math.min(...this.mouseCoords)),
-            -Math.abs(Math.max(...this.mouseCoords))
-          ];
+          this.x1 = Math.abs(Math.min(...this.mouseCoords[0]));
+          this.x2 = Math.abs(Math.max(...this.mouseCoords[0]));
 
+          // this.y1 = -Math.abs(Math.min(...this.mouseCoords[1]));
+          // this.y2 = -Math.abs(Math.max(...this.mouseCoords[1]));
+
+          this.y1 = 0;
+          this.y2 = -this.maxHeight;
+
+          this.mouseCoords = [[], []];
           this.showGlitch = true;
           this.timeout = null;
+
+          setTimeout(() => {
+            this.showGlitch = false;
+            this._clearGeometry();
+          }, 2500);
         }
       }, 500);
     });
@@ -166,13 +186,6 @@ export default class VideoGlitch {
 
       if (this.showGlitch) {
         this._updateGeometry();
-
-        setTimeout(() => {
-          this._clearGeometry();
-
-          this.mouseCoords = [];
-          this.showGlitch = false;
-        }, 2500);
       }
     }
 
@@ -188,30 +201,29 @@ export default class VideoGlitch {
     const HEIGHT_2 = (this.HEIGHT - 1.0) / 2.0;
     const WIDTH_2 = (this.WIDTH - 1.0) / 2.0;
 
-    this.stepY = this.mouseCoords[0];
-    this.stepX = 300.0;
+    this.stepY = this.y1;
+    this.stepX = this.x1;
     this.xSteps = [];
 
-    for (let i = 0, c = 0; i < this.particles; i++, c++) {
-      const i3 = i * 3;
-      const i4 = i * 4;
-      const i31 = i3 + 1;
-      const i32 = i3 + 2;
-
-      const r = this.imageData[i4] / 255;
-      const g = this.imageData[i4 + 1] / 255;
-      const b = this.imageData[i4 + 2] / 255;
-
+    for (let i = 0; i < this.particles; i++) {
       const x = (~~(i % this.WIDTH));
       const y = -(~~(i / this.WIDTH));
 
       if (this._getPixelSize(x, y)) {
-        positions[i3] = x - WIDTH_2 + 300;
+        const i3 = i * 3;
+        const i4 = i * 4;
+        const i31 = i3 + 1;
+
+        const r = this.imageData[i4] / 255;
+        const g = this.imageData[i4 + 1] / 255;
+        const b = this.imageData[i4 + 2] / 255;
+
+        positions[i3] = x - WIDTH_2 + this.OFFSET;
         positions[i31] = y + HEIGHT_2;
 
         colors[i3] = r;
         colors[i31] = g;
-        colors[i32] = b;
+        colors[i3 + 2] = b;
 
         sizes[i] = 1.0;
       }
@@ -223,36 +235,29 @@ export default class VideoGlitch {
   }
 
   _getPixelSize(x, y) {
-    const coordsLength = this.mouseCoords.length - 1;
+    const vertDist = Math.abs(this.y2 - this.y1);
+    const horzDist = Math.abs(this.x2 - this.x1);
 
-    for (let i = 0; i < coordsLength; i++) {
-      const y1 = this.mouseCoords[i];
-      const y2 = this.mouseCoords[i + 1];
+    const hypot = Math.hypot(vertDist, horzDist);
+    const hypoStepY = hypot / vertDist;
+    const hypoStepX = hypot / horzDist;
 
-      const vertDist = Math.abs(y2 - y1);
-      const horzDist = Math.abs(400 - 300);
+    if ((x > this.x1 && y >= this.y1) || (x > this.x2 && y < this.y2)) {
+      return false;
+    }
 
-      const hypot = Math.hypot(vertDist, horzDist);
-      const hypoStepY = hypot / vertDist;
-      const hypoStepX = hypot / horzDist;
+    if (x >= this.x1 && x <= this.x2 && y <= this.y1 && y >= this.y2) {
+      if (y < this.stepY && x > this.stepX) {
+        this.stepY -= hypoStepX;
+        this.stepX += hypoStepY;
 
-      if ((x > 300 && y >= y1) || (x > 400 && y < y2)) {
+        this.xSteps.push(x);
         return false;
       }
+    }
 
-      if (x >= 300 && x <= 400 && y <= y1 && y >= y2) {
-        if (y < this.stepY && x > this.stepX) {
-          this.stepY -= hypoStepX;
-          this.stepX += hypoStepY;
-
-          this.xSteps.push(x);
-          return false;
-        }
-      }
-
-      if (x > this.stepX && !this.xSteps.includes(x)) {
-        return true;
-      }
+    if (x > this.stepX && !this.xSteps.includes(x)) {
+      return true;
     }
 
     return false;
