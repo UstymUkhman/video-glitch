@@ -94,11 +94,7 @@ export default class VideoGlitch {
   _setShaderMaterial() {
     this.shaderMaterial = new THREE.ShaderMaterial({
       fragmentShader: require('./shaders/particles.frag'),
-      vertexShader: require('./shaders/particles.vert'),
-
-      uniforms: Object.assign([{
-        lines: {type: 'b', value: false}
-      }])
+      vertexShader: require('./shaders/particles.vert')
     });
   }
 
@@ -197,8 +193,10 @@ export default class VideoGlitch {
     const colors = this.geometry.attributes.color.array;
     const sizes = this.geometry.attributes.size.array;
 
-    const HEIGHT_2 = (this.HEIGHT - 1.0) / 2.0;
-    const WIDTH_2 = (this.WIDTH - 1.0) / 2.0;
+    const HEIGHT_2 = (this.HEIGHT + 1.0) / 2.0;
+    const WIDTH_2 = (this.WIDTH + 1.0) / 2.0;
+
+    let row = 0.0;
 
     this.stepY = this.y1;
     this.stepX = this.x1;
@@ -213,9 +211,15 @@ export default class VideoGlitch {
         const i4 = i * 4;
         const i31 = i3 + 1;
 
-        const r = this.imageData[i4] / 255;
-        const g = this.imageData[i4 + 1] / 255;
-        const b = this.imageData[i4 + 2] / 255;
+        let r = this.imageData[i4] / 255;
+        let g = this.imageData[i4 + 1] / 255;
+        let b = this.imageData[i4 + 2] / 255;
+
+        if (Number.isInteger(row)) {
+          r = 0.0;
+          g = 0.0;
+          b = 0.0;
+        }
 
         positions[i3] = x - WIDTH_2 + this.OFFSET;
         positions[i31] = y + HEIGHT_2;
@@ -226,14 +230,15 @@ export default class VideoGlitch {
 
         sizes[i] = 1.0;
       }
+
+      if (i % this.WIDTH === 0) {
+        row = +(row + 0.2).toFixed(1);
+      }
     }
 
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
     this.geometry.attributes.size.needsUpdate = true;
-
-    this.shaderMaterial.uniforms[0].lines.value = true;
-    this.shaderMaterial.needsUpdate = true;
   }
 
   _getPixelSize(x, y) {

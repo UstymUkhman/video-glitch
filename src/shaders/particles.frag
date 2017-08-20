@@ -1,8 +1,10 @@
 varying float vLines;
 varying vec3 vColor;
 
-uniform float lines;
-
 void main(void) {
-  gl_FragColor = vec4(vColor, 1.0);
+  if (vColor == vec3(1.0, 1.0, 1.0)) {
+    discard;
+  }
+
+  gl_FragColor = vec4(vColor, 0.5);
 }
