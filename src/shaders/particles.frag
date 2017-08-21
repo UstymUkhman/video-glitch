@@ -1,10 +1,12 @@
-varying float vLines;
+precision mediump float;
+
+varying vec3 textCoord;
 varying vec3 vColor;
+varying float vLines;
+
+uniform sampler2D texture;
 
 void main(void) {
-  if (vColor == vec3(1.0, 1.0, 1.0)) {
-    discard;
-  }
-
-  gl_FragColor = vec4(vColor, 0.5);
+  vec4 color = vec4(vColor, 0.8);
+  gl_FragColor = vec4(color.rgb * color.a, color.a);
 }

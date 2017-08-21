@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "dat.gui": "^0.6.1",
+    "glsl-fast-gaussian-blur": "^1.0.2",
     "gsap": "^1.19.1",
     "pixi.js": "^5.0.0-alpha",
     "three": "^0.86.0",

@@ -8,10 +8,10 @@ export default class VideoGlitch {
     this.container = null;
     this.particles = null;
 
-    this.maxWidth = 960; // 1280
-    this.maxHeight = 540; // 720
+    this.maxWidth = 640; // 1280
+    this.maxHeight = 360; // 720
 
-    this.OFFSET = 200.0;
+    this.OFFSET = 75.0;
 
     this.x1 = null;
     this.x2 = null;
@@ -99,8 +99,8 @@ export default class VideoGlitch {
   }
 
   _setVideoSize() {
-    const HEIGHT = 540; // this.video.videoHeight;
-    const WIDTH = 960; // this.video.videoWidth;
+    const HEIGHT = 360; // this.video.videoHeight;
+    const WIDTH = 640; // this.video.videoWidth;
 
     this.video.height = HEIGHT;
     this.video.width = WIDTH;
@@ -228,7 +228,7 @@ export default class VideoGlitch {
         colors[i31] = g;
         colors[i3 + 2] = b;
 
-        sizes[i] = 1.0;
+        sizes[i] = 1.1;
       }
 
       if (i % this.WIDTH === 0) {
