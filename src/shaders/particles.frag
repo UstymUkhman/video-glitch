@@ -1,12 +1,14 @@
-precision mediump float;
+precision highp float;
 
-varying vec3 textCoord;
 varying vec3 vColor;
-varying float vLines;
-
-uniform sampler2D texture;
+uniform vec3 gColor;
 
 void main(void) {
-  vec4 color = vec4(vColor, 0.8);
+  vec4 color = vec4(vColor, 0.5);
+
+  color.r += color.r * gColor.r;
+  color.g += color.g * gColor.g;
+  color.b += color.b * gColor.b;
+
   gl_FragColor = vec4(color.rgb * color.a, color.a);
 }
