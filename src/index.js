@@ -1,4 +1,18 @@
-import * as THREE from 'three';
+// import * as THREE from 'three';
+const THREE = window.THREE;
+
+// http://bit.ly/WfFKe7
+// https://stackoverflow.com/questions/15354117/three-js-blur-the-frame-buffer
+// https://bitbucket.org/monogrid/mike-gao-audio-reactive/src/885ca308c52ecaa0808067d7e5c8a02216b4576a/src/index.js?at=daniele&fileviewer=file-view-default
+
+// require('three/examples/js/shaders/CopyShader');
+// require('three/examples/js/shaders/HorizontalBlurShader');
+// require('three/examples/js/shaders/VerticalBlurShader');
+// require('three/examples/js/postprocessing/EffectComposer');
+
+// import Detector from 'three/examples/js/Detector';
+// import Stats from 'three/examples/js/libs/stats.min';
+// import dat from 'three/examples/js/libs/dat.gui.min';
 
 export default class VideoGlitch {
   constructor() {
@@ -89,6 +103,21 @@ export default class VideoGlitch {
         gColor: {type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0)}
       }
     });
+
+    this.composer = new THREE.EffectComposer(this.renderer);
+    this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
+
+    this.composer = new THREE.EffectComposer(this.renderer);
+    this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
+
+    const hblur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
+
+    this.composer.addPass(hblur);
+
+    const vblur = new THREE.ShaderPass(THREE.VerticalBlurShader);
+
+    vblur.renderToScreen = true;
+    this.composer.addPass(vblur);
   }
 
   createVideoStream() {
@@ -254,6 +283,8 @@ export default class VideoGlitch {
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
     this.geometry.attributes.size.needsUpdate = true;
+
+    this.composer.render();
   }
 
   clearVideoStream() {
