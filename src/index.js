@@ -19,25 +19,36 @@ export default class VideoGlitch {
     this.height = 360;
     this.width = 640;
 
-    this.slideX = null;
-    this.slideY = null;
-
-    this.offsetX = 0.0;
-    this.offsetY = 0.0;
-
     this.ratio = this.width / this.height;
-    this.reverseSlide = false;
+    this.BLUR_LEVEL = 1.0 / 512.0;
 
     this.animations = {
-      BACK_AFTER_SLIDE: false,
-      VISIBLE_LINES: true,
-      COLOR_FILTER: true,
-
       SLIDE_X: false,
       SLIDE_Y: false,
 
+      COLOR: true,
+      LINES: true,
+
       ZOOM: false,
       BLUR: false
+    };
+
+    this.slide = {
+      x: {
+        backwards: false,
+        forwards: false,
+        offset: 0.0,
+        step: 0,
+        to: 0.0
+      },
+
+      y: {
+        backwards: false,
+        forwards: false,
+        offset: 0.0,
+        step: 0,
+        to: 0.0
+      }
     };
   }
 
@@ -87,12 +98,12 @@ export default class VideoGlitch {
     this.handleUserEvents();
 
     this.video.play();
-    this._render();
+    this.render();
   }
 
   createBlurShader() {
     this.blurUniforms = {
-      distortion: { type: 'f', value: 1.0 / 512.0 },
+      distortion: { type: 'f', value: 0.0 },
       tDiffuse: { type: 't', value: null }
     };
 
@@ -110,6 +121,9 @@ export default class VideoGlitch {
   }
 
   createShaderMaterial() {
+    const horizontalBlur = new THREE.ShaderPass(this.horizontalBlurShader);
+    const verticalBlur = new THREE.ShaderPass(this.verticalBlurShader);
+
     this.shaderMaterial = new THREE.ShaderMaterial({
       fragmentShader: require('./shaders/particles.frag'),
       vertexShader: require('./shaders/particles.vert'),
@@ -122,17 +136,10 @@ export default class VideoGlitch {
     this.composer = new THREE.EffectComposer(this.renderer);
     this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
 
-    this.composer = new THREE.EffectComposer(this.renderer);
-    this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
+    this.composer.addPass(horizontalBlur);
+    this.composer.addPass(verticalBlur);
 
-    const hblur = new THREE.ShaderPass(this.horizontalBlurShader);
-
-    this.composer.addPass(hblur);
-
-    const vblur = new THREE.ShaderPass(this.verticalBlurShader);
-
-    vblur.renderToScreen = true;
-    this.composer.addPass(vblur);
+    verticalBlur.renderToScreen = true;
   }
 
   createVideoStream() {
@@ -174,20 +181,30 @@ export default class VideoGlitch {
         case 66: b = 1.0; break; // increment %
       }
 
-      if (this.animations.COLOR_FILTER) {
+      if (this.animations.COLOR) {
         this.shaderMaterial.uniforms.gColor.value = new THREE.Vector3(r, g, b);
       }
 
       this.animations.SLIDE_X = true;
       this.animations.SLIDE_Y = true;
+      this.animations.BLUR = true;
 
-      this.reverseSlide = false;
-      this.slideX = 50.0; // setted offsets
-      this.slideY = 10.0; // setted offsets
+      if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
+        this.shaderMaterial.uniforms.gColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
+      }
+
+      this.slide.x.forwards = true;
+      this.slide.y.forwards = true;
+
+      this.slide.x.to = 50.0; // setted offsets
+      this.slide.y.to = 10.0; // setted offsets
+
+      this.slide.y.step = 1; // 1 --> top   | -1 --> bottom
+      this.slide.x.step = 1; // 1 --> right | -1 --> left
     });
   }
 
-  _render() {
+  render() {
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       const context = this.canvas.getContext('2d');
 
@@ -197,41 +214,45 @@ export default class VideoGlitch {
       this.updateVideoStream();
     }
 
-    // this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(this._render.bind(this));
+    requestAnimationFrame(this.render.bind(this));
   }
 
-  horizontalSlide(fast, slow) {
-    if (!this.reverseSlide && this.offsetX < this.slideX) {
-      this.offsetX += (this.offsetX < this.slideX / 2) ? fast : slow;
+  animateSlide(slide, speed) {
+    speed *= slide.step;
 
-    } else if (this.offsetX > 0.0) {
-      this.reverseSlide = true;
-      this.offsetX -= slow;
+    if (slide.forwards) {
+      slide.offset += speed;
+      slide.backwards = slide.offset * slide.step > slide.to;
+    }
 
-    } else if (this.offsetX <= 0.0 && this.reverseSlide) {
-      this.animations.SLIDE_X = false;
-      this.offsetX = 0.0;
+    if (slide.backwards) {
+      slide.offset -= speed;
+      slide.forwards = false;
+      slide.backwards = slide.offset * slide.step > 0.0;
+    }
+
+    if (!slide.forwards && !slide.backwards) {
+      slide.offset = 0.0;
+      return true;
     }
   }
 
-  verticalSlide(slow) {
-    if (this.slideY > 0.0 && this.offsetY < this.slideY) {
-      this.offsetY += slow;
-    } else if (this.slideY > 0.0) {
-      this.slideY = -10.0;
+  createEffects() {
+    const fast = this.slide.x.to / 15;
+    const slow = this.slide.x.to / 30;
+
+    this.blurUniforms.distortion.value = this.animations.BLUR ? this.BLUR_LEVEL : 0.0;
+
+    if (this.animations.SLIDE_X) {
+      this.animations.SLIDE_X = !this.animateSlide(this.slide.x, this.slide.x.forwards ? fast : slow);
     }
 
-    if (this.slideY < 0.0 && this.offsetY > this.slideY) {
-      this.offsetY -= slow;
-    } else if (this.slideY < 0.0) {
-      this.slideY = 0.0;
+    if (this.animations.SLIDE_Y) {
+      this.animations.SLIDE_Y = !this.animateSlide(this.slide.y, slow);
     }
 
-    if (this.slideY === 0.0 && this.offsetY < 0.0) {
-      this.offsetY += slow;
-    } else if (this.slideY === 0.0 && this.offsetY >= 0.0) {
-      this.animations.SLIDE_Y = false;
+    if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
+      this.animations.BLUR = false;
     }
   }
 
@@ -243,41 +264,32 @@ export default class VideoGlitch {
     const HEIGHT_2 = (this.height - 1.0) / 2.0;
     const WIDTH_2 = (this.width - 1.0) / 2.0;
 
-    const FAST = this.slideX / 15;
-    const SLOW = this.slideX / 30;
-
-    const showLines = (this.animations.SLIDE_X || this.animations.SLIDE_Y) && this.animations.VISIBLE_LINES;
     let row = 0.0;
 
-    if (this.animations.SLIDE_X) this.horizontalSlide(FAST, SLOW);
-    if (this.animations.SLIDE_Y) this.verticalSlide(SLOW);
-
-    if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
-      this.shaderMaterial.uniforms.gColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
-    }
+    this.createEffects();
 
     for (let i = 0; i < this.particles;) {
-      const x = (~~(i % this.width));
+      const f = row - parseInt(row, 0);
       const y = -(~~(i / this.width));
+      const x = (~~(i % this.width));
 
       const i3 = i * 3;
       const i4 = i * 4;
       const i31 = i3 + 1;
 
+      let offsetX = this.slide.x.offset;
+      let offsetY = this.slide.y.offset;
+
       let r = this.imageData[i4] / 255;
       let g = this.imageData[i4 + 1] / 255;
       let b = this.imageData[i4 + 2] / 255;
 
-      const rowInt = parseInt(row, 0);
-      let offsetX = this.offsetX;
-      let offsetY = this.offsetY;
+      if (this.animations.LINES && f < 0.3) {
+        offsetX = 0.0;
 
-      if (showLines && (row - rowInt) < 0.3) {
         r = 0.0;
         g = 0.0;
         b = 0.0;
-
-        offsetX = 0.0;
       }
 
       positions[i3] = x - WIDTH_2 + offsetX;
@@ -290,7 +302,7 @@ export default class VideoGlitch {
       sizes[i] = 1.0;
       i++;
 
-      if (showLines && !((i + 1) % this.width)) {
+      if (this.animations.LINES && !((i + 1) % this.width)) {
         row = +(row + 0.2).toFixed(1);
       }
     }
