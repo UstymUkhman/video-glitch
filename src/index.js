@@ -131,7 +131,7 @@ export default class VideoGlitch {
     const verticalBlur = new THREE.ShaderPass(this.verticalBlurShader);
 
     this.shaderMaterial = new THREE.ShaderMaterial({
-      fragmentShader: require('./shaders/particles.frag'),
+      fragmentShader: require('./shaders/particles.frag'), // particles.frag
       vertexShader: require('./shaders/particles.vert'),
 
       uniforms: {
