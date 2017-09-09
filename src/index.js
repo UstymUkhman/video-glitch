@@ -15,6 +15,7 @@ export default class VideoGlitch {
 
     this.container = null;
     this.particles = null;
+    this.canvas = null;
 
     this.height = 360;
     this.width = 640;
@@ -26,9 +27,10 @@ export default class VideoGlitch {
       SLIDE_X: false,
       SLIDE_Y: false,
 
-      COLOR: true,
-      LINES: true,
+      COLOR: false,
+      LINES: false,
 
+      NOISE: true,
       ZOOM: false,
       BLUR: false
     };
@@ -62,7 +64,11 @@ export default class VideoGlitch {
     this.video.height = 360;
     this.video.width = 640;
 
-    this.video.oncanplay = this._init.bind(this);
+    this.video.oncanplay = () => {
+      if (this.canvas === null) {
+        this._init();
+      }
+    };
 
     this.container = container;
     this.container.appendChild(this.video);
@@ -144,6 +150,7 @@ export default class VideoGlitch {
 
   createVideoStream() {
     const context = this.canvas.getContext('2d');
+    // const uvRect = [0, 0, 1, 0, 1, 1, 0, 1];
 
     context.drawImage(this.video, 0, 0, this.width, this.height);
 
@@ -154,10 +161,12 @@ export default class VideoGlitch {
     const positions = new Float32Array(this.particles * 3);
     const colors = new Float32Array(this.particles * 3);
     const sizes = new Float32Array(this.particles);
+    // const uvs = new Float32Array(uvRect);
 
     this.geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
     this.geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    // this.geometry.addAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
   }
@@ -187,7 +196,7 @@ export default class VideoGlitch {
 
       this.animations.SLIDE_X = true;
       this.animations.SLIDE_Y = true;
-      this.animations.BLUR = true;
+      // this.animations.BLUR = true;
 
       if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
         this.shaderMaterial.uniforms.gColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
