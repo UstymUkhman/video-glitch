@@ -3,6 +3,7 @@ precision mediump float;
 attribute float size;
 attribute vec3 color;
 
+varying vec4 vPosition;
 varying vec3 vColor;
 varying vec2 vUv;
 
@@ -13,6 +14,7 @@ void main(void) {
   gl_Position = projectionMatrix * mvPosition;
   gl_PointSize = size;
 
+  vPosition = gl_Position;
   vColor = color;
   vUv = uv;
 }
