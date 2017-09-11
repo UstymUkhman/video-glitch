@@ -7,11 +7,12 @@ require('three/examples/js/postprocessing/ShaderPass');
 
 // import Detector from 'three/examples/js/Detector';
 // import Stats from 'three/examples/js/libs/stats.min';
-// import dat from 'three/examples/js/libs/dat.gui.min';
+import dat from 'three/examples/js/libs/dat.gui.min';
 
 export default class VideoGlitch {
   constructor() {
     this._name = 'VideoGlitch';
+    this._gui = new dat.GUI();
 
     this.container = null;
     this.particles = null;
@@ -30,7 +31,7 @@ export default class VideoGlitch {
       COLOR: true,
       LINES: false,
 
-      NOISE: true,
+      NOISE: false,
       ZOOM: false,
       BLUR: false
     };
@@ -98,6 +99,7 @@ export default class VideoGlitch {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.container.appendChild(this.renderer.domElement);
 
+    this.createEffectsGUI();
     this.createBlurShader();
     this.createShaderMaterial();
     this.createVideoStream();
@@ -105,6 +107,21 @@ export default class VideoGlitch {
 
     this.video.play();
     this.render();
+  }
+
+  createEffectsGUI() {
+    const settings = {
+      Noise: false,
+      Blur: false
+    };
+
+    this._gui.add(settings, 'Noise').onFinishChange((value) => {
+      this.animations.NOISE = value;
+    });
+
+    this._gui.add(settings, 'Blur').onFinishChange((value) => {
+      this.animations.BLUR = value;
+    });
   }
 
   createBlurShader() {
@@ -135,8 +152,8 @@ export default class VideoGlitch {
       vertexShader: require('./shaders/particles.vert'),
 
       uniforms: {
-        filterColor: {type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0)},
-        noiseIntensity: {type: 'f', value: 10.0}
+        filterColor: { type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0) },
+        noiseIntensity: { type: 'f', value: 0.0 }
       }
     });
 
@@ -192,13 +209,8 @@ export default class VideoGlitch {
         this.shaderMaterial.uniforms.filterColor.value = new THREE.Vector3(r, g, b);
       }
 
-      if (this.animations.NOISE) {
-        this.shaderMaterial.uniforms.noiseIntensity.value = 10.0;
-      }
-
       this.animations.SLIDE_X = true;
-      this.animations.SLIDE_Y = true;
-      // this.animations.BLUR = true;
+      // this.animations.SLIDE_Y = true;
 
       if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
         this.shaderMaterial.uniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
@@ -252,6 +264,7 @@ export default class VideoGlitch {
     const fast = this.slide.x.to / 15;
     const slow = this.slide.x.to / 30;
 
+    this.shaderMaterial.uniforms.noiseIntensity.value = this.animations.NOISE ? 10.0 : 0.0;
     this.blurUniforms.distortion.value = this.animations.BLUR ? this.BLUR_LEVEL : 0.0;
 
     if (this.animations.SLIDE_X) {
@@ -264,8 +277,6 @@ export default class VideoGlitch {
 
     if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
       this.shaderMaterial.uniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
-      this.shaderMaterial.uniforms.noiseIntensity.value = 0.0;
-      this.animations.BLUR = false;
     }
   }
 

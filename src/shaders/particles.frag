@@ -19,7 +19,7 @@ vec4 noise(float intensity) {
 }
 
 void main(void) {
-  vec4 color = vec4(vColor, 1.0); // 0.5
+  vec4 color = vec4(vColor, 0.5); // 0.5
   vec4 grain = vec4(0.0);
 
   color.r += color.r * filterColor.r;
