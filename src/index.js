@@ -38,6 +38,7 @@ export default class VideoGlitch {
       LINES: false,
       NOISE: 0.0,
       ZOOM: false,
+      SIZE: 1.0,
       BLUR: 0.0
     };
 
@@ -120,6 +121,7 @@ export default class VideoGlitch {
       Lines: false,
       Blur: 0.0,
       Noise: 0.0,
+      Size: 1.0,
       showOnSlide: false
     };
 
@@ -145,6 +147,10 @@ export default class VideoGlitch {
 
     this._gui.add(settings, 'Noise', 0.0, 20.0).step(0.1).onChange((value) => {
       this.animations.NOISE = value;
+    });
+
+    this._gui.add(settings, 'Size', 1.0, 2.0).step(0.125).onChange((value) => {
+      this.animations.SIZE = value;
     });
 
     this._gui.add(settings, 'showOnSlide').onFinishChange((value) => {
@@ -336,9 +342,9 @@ export default class VideoGlitch {
       let g = this.imageData[i4 + 1] / 255;
       let b = this.imageData[i4 + 2] / 255;
 
-      const showLines = this.animations.ON_SLIDE ? onSlide : true;
+      const showEffect = this.animations.ON_SLIDE ? onSlide : true;
 
-      if (this.animations.LINES && showLines && f < 0.3) {
+      if (this.animations.LINES && showEffect && f < 0.3) {
         offsetX = 0.0;
 
         r = 0.0;
@@ -353,10 +359,10 @@ export default class VideoGlitch {
       colors[i31] = g;
       colors[i3 + 2] = b;
 
-      sizes[i] = 1.0;
+      sizes[i] = showEffect ? this.animations.SIZE : 1.0;
       i++;
 
-      if (this.animations.LINES && showLines && !((i + 1) % this.width)) {
+      if (this.animations.LINES && showEffect && !((i + 1) % this.width)) {
         row = +(row + 0.2).toFixed(1);
       }
     }
