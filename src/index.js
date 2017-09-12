@@ -22,18 +22,23 @@ export default class VideoGlitch {
     this.width = 640;
 
     this.ratio = this.width / this.height;
-    this.BLUR_LEVEL = 1.0 / 512.0;
+
+    this._colorFilters = {
+      red: 0.0,
+      green: 0.0,
+      blue: 0.0,
+      showOnSlide: false
+    };
 
     this.animations = {
+      ON_SLIDE: false,
       SLIDE_X: false,
       SLIDE_Y: false,
 
-      COLOR: true,
       LINES: false,
-
-      NOISE: false,
+      NOISE: 0.0,
       ZOOM: false,
-      BLUR: false
+      BLUR: 0.0
     };
 
     this.slide = {
@@ -110,17 +115,45 @@ export default class VideoGlitch {
   }
 
   createEffectsGUI() {
+    const colors = this._gui.addFolder('Colors');
     const settings = {
-      Noise: false,
-      Blur: false
+      Lines: false,
+      Blur: 0.0,
+      Noise: 0.0,
+      showOnSlide: false
     };
 
-    this._gui.add(settings, 'Noise').onFinishChange((value) => {
+    colors.add(this._colorFilters, 'red', 0.0, 1.0).step(0.01);
+    colors.add(this._colorFilters, 'green', 0.0, 1.0).step(0.01);
+    colors.add(this._colorFilters, 'blue', 0.0, 1.0).step(0.01);
+
+    colors.add(this._colorFilters, 'showOnSlide').onFinishChange((value) => {
+      this._colorFilters.showOnSlide = value;
+
+      if (this._colorFilters.showOnSlide) {
+        this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
+      }
+    });
+
+    this._gui.add(settings, 'Lines').onFinishChange((value) => {
+      this.animations.LINES = value;
+    });
+
+    this._gui.add(settings, 'Blur', 0.0, 1.0).step(0.01).onChange((value) => {
+      this.animations.BLUR = value / 100.0;
+    });
+
+    this._gui.add(settings, 'Noise', 0.0, 20.0).step(0.1).onChange((value) => {
       this.animations.NOISE = value;
     });
 
-    this._gui.add(settings, 'Blur').onFinishChange((value) => {
-      this.animations.BLUR = value;
+    this._gui.add(settings, 'showOnSlide').onFinishChange((value) => {
+      this.animations.ON_SLIDE = value;
+
+      if (this.animations.ON_SLIDE) {
+        this.shaderUniforms.noiseIntensity.value = 0.0;
+        this.blurUniforms.distortion.value = 0.0;
+      }
     });
   }
 
@@ -147,14 +180,16 @@ export default class VideoGlitch {
     const horizontalBlur = new THREE.ShaderPass(this.horizontalBlurShader);
     const verticalBlur = new THREE.ShaderPass(this.verticalBlurShader);
 
+    this.shaderUniforms = {
+      filterColor: { type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0) },
+      noiseIntensity: { type: 'f', value: 10.0 },
+      time: { type: 'f', value: 0.0 }
+    };
+
     this.shaderMaterial = new THREE.ShaderMaterial({
       fragmentShader: require('./shaders/particles.frag'),
       vertexShader: require('./shaders/particles.vert'),
-
-      uniforms: {
-        filterColor: { type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0) },
-        noiseIntensity: { type: 'f', value: 0.0 }
-      }
+      uniforms: this.shaderUniforms
     });
 
     this.composer = new THREE.EffectComposer(this.renderer);
@@ -197,24 +232,8 @@ export default class VideoGlitch {
     // });
 
     document.addEventListener('keydown', (event) => {
-      let r = 0.0, g = 0.0, b = 0.0;
-
-      switch (event.keyCode) {
-        case 82: r = 1.0; break; // increment %
-        case 71: g = 1.0; break; // increment %
-        case 66: b = 1.0; break; // increment %
-      }
-
-      if (this.animations.COLOR) {
-        this.shaderMaterial.uniforms.filterColor.value = new THREE.Vector3(r, g, b);
-      }
-
       this.animations.SLIDE_X = true;
       // this.animations.SLIDE_Y = true;
-
-      if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
-        this.shaderMaterial.uniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
-      }
 
       this.slide.x.forwards = true;
       this.slide.y.forwards = true;
@@ -264,9 +283,6 @@ export default class VideoGlitch {
     const fast = this.slide.x.to / 15;
     const slow = this.slide.x.to / 30;
 
-    this.shaderMaterial.uniforms.noiseIntensity.value = this.animations.NOISE ? 10.0 : 0.0;
-    this.blurUniforms.distortion.value = this.animations.BLUR ? this.BLUR_LEVEL : 0.0;
-
     if (this.animations.SLIDE_X) {
       this.animations.SLIDE_X = !this.animateSlide(this.slide.x, this.slide.x.forwards ? fast : slow);
     }
@@ -275,9 +291,22 @@ export default class VideoGlitch {
       this.animations.SLIDE_Y = !this.animateSlide(this.slide.y, slow);
     }
 
-    if (!this.animations.SLIDE_X && !this.animations.SLIDE_Y) {
-      this.shaderMaterial.uniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
+    const isSliding = this.animations.SLIDE_X || this.animations.SLIDE_Y;
+
+    if (!this.animations.ON_SLIDE || (this.animations.ON_SLIDE && isSliding)) {
+      this.shaderUniforms.time.value = Number(String(Date.now()).slice(-5)) / 10000;
+      this.shaderUniforms.noiseIntensity.value = this.animations.NOISE;
+
+      this.blurUniforms.distortion.value = this.animations.BLUR;
     }
+
+    if (!this._colorFilters.showOnSlide || isSliding) {
+      this.shaderUniforms.filterColor.value = new THREE.Vector3(
+        this._colorFilters.red, this._colorFilters.green, this._colorFilters.blue
+      );
+    }
+
+    return isSliding;
   }
 
   updateVideoStream() {
@@ -288,9 +317,8 @@ export default class VideoGlitch {
     const HEIGHT_2 = (this.height - 1.0) / 2.0;
     const WIDTH_2 = (this.width - 1.0) / 2.0;
 
+    const onSlide = this.createEffects();
     let row = 0.0;
-
-    this.createEffects();
 
     for (let i = 0; i < this.particles;) {
       const f = row - parseInt(row, 0);
@@ -308,7 +336,9 @@ export default class VideoGlitch {
       let g = this.imageData[i4 + 1] / 255;
       let b = this.imageData[i4 + 2] / 255;
 
-      if (this.animations.LINES && f < 0.3) {
+      const showLines = this.animations.ON_SLIDE ? onSlide : true;
+
+      if (this.animations.LINES && showLines && f < 0.3) {
         offsetX = 0.0;
 
         r = 0.0;
@@ -326,7 +356,7 @@ export default class VideoGlitch {
       sizes[i] = 1.0;
       i++;
 
-      if (this.animations.LINES && !((i + 1) % this.width)) {
+      if (this.animations.LINES && showLines && !((i + 1) % this.width)) {
         row = +(row + 0.2).toFixed(1);
       }
     }
@@ -338,7 +368,7 @@ export default class VideoGlitch {
     this.composer.render();
   }
 
-  clearVideoStream() {
+  /* clearVideoStream() {
     const positions = new Float32Array(this.particles * 3);
     const colors = new Float32Array(this.particles * 3);
     const sizes = new Float32Array(this.particles);
@@ -350,5 +380,5 @@ export default class VideoGlitch {
     this.geometry.attributes.position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
     this.geometry.attributes.size.needsUpdate = true;
-  }
+  } */
 }

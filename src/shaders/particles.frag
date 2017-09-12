@@ -1,7 +1,8 @@
 precision highp float;
 
 uniform float noiseIntensity;
-uniform vec3 filterColor;
+uniform vec3  filterColor;
+uniform float time;
 
 varying vec4 vPosition;
 varying vec3 vColor;
@@ -10,8 +11,6 @@ varying vec2 vUv;
 #pragma glslify: random = require(glsl-random)
 
 vec4 noise(float intensity) {
-  // Timestamp Uniform:
-  const float time = 0.5;
   float coord = random(gl_FragCoord.xy);
   float x = (vPosition.x * coord + 4.0) * (vPosition.y * coord + 4.0) * (sin(time) * 10.0);
 
