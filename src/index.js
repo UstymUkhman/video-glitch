@@ -31,14 +31,16 @@ export default class VideoGlitch {
     };
 
     this.animations = {
+      SLIDE_ON_X: false,
+      SLIDE_ON_Y: false,
+
       ON_SLIDE: false,
       SLIDE_X: false,
       SLIDE_Y: false,
 
       LINES: false,
       NOISE: 0.0,
-      ZOOM: false,
-      SIZE: 1.0,
+      ZOOM: 1.0,
       BLUR: 0.0
     };
 
@@ -117,11 +119,13 @@ export default class VideoGlitch {
 
   createEffectsGUI() {
     const colors = this._gui.addFolder('Colors');
+    const slide = this._gui.addFolder('Slide');
+
     const settings = {
       Lines: false,
       Blur: 0.0,
       Noise: 0.0,
-      Size: 1.0,
+      Zoom: 1.0,
       showOnSlide: false
     };
 
@@ -137,6 +141,9 @@ export default class VideoGlitch {
       }
     });
 
+    slide.add(this.animations, 'SLIDE_ON_X');
+    slide.add(this.animations, 'SLIDE_ON_Y');
+
     this._gui.add(settings, 'Lines').onFinishChange((value) => {
       this.animations.LINES = value;
     });
@@ -149,8 +156,8 @@ export default class VideoGlitch {
       this.animations.NOISE = value;
     });
 
-    this._gui.add(settings, 'Size', 1.0, 2.0).step(0.125).onChange((value) => {
-      this.animations.SIZE = value;
+    this._gui.add(settings, 'Zoom', 1.0, 2.0).step(0.125).onChange((value) => {
+      this.animations.ZOOM = value;
     });
 
     this._gui.add(settings, 'showOnSlide').onFinishChange((value) => {
@@ -238,9 +245,6 @@ export default class VideoGlitch {
     // });
 
     document.addEventListener('keydown', (event) => {
-      this.animations.SLIDE_X = true;
-      // this.animations.SLIDE_Y = true;
-
       this.slide.x.forwards = true;
       this.slide.y.forwards = true;
 
@@ -289,11 +293,11 @@ export default class VideoGlitch {
     const fast = this.slide.x.to / 15;
     const slow = this.slide.x.to / 30;
 
-    if (this.animations.SLIDE_X) {
+    if (this.animations.SLIDE_ON_X) {
       this.animations.SLIDE_X = !this.animateSlide(this.slide.x, this.slide.x.forwards ? fast : slow);
     }
 
-    if (this.animations.SLIDE_Y) {
+    if (this.animations.SLIDE_ON_Y) {
       this.animations.SLIDE_Y = !this.animateSlide(this.slide.y, slow);
     }
 
@@ -359,7 +363,7 @@ export default class VideoGlitch {
       colors[i31] = g;
       colors[i3 + 2] = b;
 
-      sizes[i] = showEffect ? this.animations.SIZE : 1.0;
+      sizes[i] = showEffect ? this.animations.ZOOM : 1.0;
       i++;
 
       if (this.animations.LINES && showEffect && !((i + 1) % this.width)) {
