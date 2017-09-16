@@ -2,6 +2,7 @@ precision highp float;
 
 uniform float noiseIntensity;
 uniform vec3  filterColor;
+uniform float alpha;
 uniform float time;
 
 varying vec4 vPosition;
@@ -18,7 +19,7 @@ vec4 noise(float intensity) {
 }
 
 void main(void) {
-  vec4 color = vec4(vColor, 0.5); // personalizzable
+  vec4 color = vec4(vColor, alpha);
   vec4 grain = vec4(0.0);
 
   color.r += color.r * filterColor.r;

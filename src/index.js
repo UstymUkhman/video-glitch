@@ -33,6 +33,7 @@ export default class VideoGlitch {
     this.animations = {
       SLIDE_ON_X: false,
       SLIDE_ON_Y: false,
+      SLIDE_BACK: true,
 
       ON_SLIDE: false,
       SLIDE_X: false,
@@ -49,16 +50,16 @@ export default class VideoGlitch {
         backwards: false,
         forwards: false,
         offset: 0.0,
-        step: 0,
-        to: 0.0
+        step: 1,
+        to: 50.0
       },
 
       y: {
         backwards: false,
         forwards: false,
         offset: 0.0,
-        step: 0,
-        to: 0.0
+        step: 1,
+        to: 10.0
       }
     };
   }
@@ -121,11 +122,18 @@ export default class VideoGlitch {
     const colors = this._gui.addFolder('Colors');
     const slide = this._gui.addFolder('Slide');
 
+    const maxOffsetY = this.height / 2;
+    const maxOffsetX = this.width / 2;
+
     const settings = {
+      slideDistanceX: 50.0,
+      slideDistanceY: 10.0,
+
       Lines: false,
       Blur: 0.0,
       Noise: 0.0,
       Zoom: 1.0,
+      Opacity: 0.5,
       showOnSlide: false
     };
 
@@ -142,7 +150,18 @@ export default class VideoGlitch {
     });
 
     slide.add(this.animations, 'SLIDE_ON_X');
+    slide.add(settings, 'slideDistanceX', -maxOffsetX, maxOffsetX).onChange((value) => {
+      this.slide.x.step = value < 0 ? -1 : 1;
+      this.slide.x.to = Math.abs(value);
+    });
+
     slide.add(this.animations, 'SLIDE_ON_Y');
+    slide.add(settings, 'slideDistanceY', -maxOffsetY, maxOffsetY).onChange((value) => {
+      this.slide.y.step = value < 0 ? -1 : 1;
+      this.slide.y.to = Math.abs(value);
+    });
+
+    slide.add(this.animations, 'SLIDE_BACK');
 
     this._gui.add(settings, 'Lines').onFinishChange((value) => {
       this.animations.LINES = value;
@@ -158,6 +177,10 @@ export default class VideoGlitch {
 
     this._gui.add(settings, 'Zoom', 1.0, 2.0).step(0.125).onChange((value) => {
       this.animations.ZOOM = value;
+    });
+
+    this._gui.add(settings, 'Opacity', 0.0, 1.0).step(0.01).onChange((value) => {
+      this.shaderUniforms.alpha.value = value;
     });
 
     this._gui.add(settings, 'showOnSlide').onFinishChange((value) => {
@@ -196,6 +219,7 @@ export default class VideoGlitch {
     this.shaderUniforms = {
       filterColor: { type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0) },
       noiseIntensity: { type: 'f', value: 10.0 },
+      alpha: { type: 'f', value: 0.5 },
       time: { type: 'f', value: 0.0 }
     };
 
@@ -247,12 +271,6 @@ export default class VideoGlitch {
     document.addEventListener('keydown', (event) => {
       this.slide.x.forwards = true;
       this.slide.y.forwards = true;
-
-      this.slide.x.to = 50.0; // setted offsets
-      this.slide.y.to = 10.0; // setted offsets
-
-      this.slide.y.step = 1; // 1 --> top   | -1 --> bottom
-      this.slide.x.step = 1; // 1 --> right | -1 --> left
     });
   }
 
