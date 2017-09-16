@@ -40,6 +40,7 @@ export default class VideoGlitch {
       SLIDE_Y: false,
 
       LINES: false,
+      ALPHA: 0.5,
       NOISE: 0.0,
       ZOOM: 1.0,
       BLUR: 0.0
@@ -112,18 +113,23 @@ export default class VideoGlitch {
     this.createBlurShader();
     this.createShaderMaterial();
     this.createVideoStream();
-    this.handleUserEvents();
 
     this.video.play();
     this.render();
   }
 
+  /**
+   * TODO:
+   *
+   * Canvas Width
+   * Canvas Height
+   * Slide X Speed
+   * Slide Y Speed
+   */
+
   createEffectsGUI() {
     const colors = this._gui.addFolder('Colors');
-    const slide = this._gui.addFolder('Slide');
-
-    const maxOffsetY = this.height / 2;
-    const maxOffsetX = this.width / 2;
+    const effects = this._gui.addFolder('Effects');
 
     const settings = {
       slideDistanceX: 50.0,
@@ -134,7 +140,12 @@ export default class VideoGlitch {
       Noise: 0.0,
       Zoom: 1.0,
       Opacity: 0.5,
-      showOnSlide: false
+      showOnSlide: false,
+
+      Slide: () => {
+        this.slide.x.forwards = true;
+        this.slide.y.forwards = true;
+      }
     };
 
     colors.add(this._colorFilters, 'red', 0.0, 1.0).step(0.01);
@@ -149,41 +160,28 @@ export default class VideoGlitch {
       }
     });
 
-    slide.add(this.animations, 'SLIDE_ON_X');
-    slide.add(settings, 'slideDistanceX', -maxOffsetX, maxOffsetX).onChange((value) => {
-      this.slide.x.step = value < 0 ? -1 : 1;
-      this.slide.x.to = Math.abs(value);
-    });
-
-    slide.add(this.animations, 'SLIDE_ON_Y');
-    slide.add(settings, 'slideDistanceY', -maxOffsetY, maxOffsetY).onChange((value) => {
-      this.slide.y.step = value < 0 ? -1 : 1;
-      this.slide.y.to = Math.abs(value);
-    });
-
-    slide.add(this.animations, 'SLIDE_BACK');
-
-    this._gui.add(settings, 'Lines').onFinishChange((value) => {
+    effects.add(settings, 'Lines').onFinishChange((value) => {
       this.animations.LINES = value;
     });
 
-    this._gui.add(settings, 'Blur', 0.0, 1.0).step(0.01).onChange((value) => {
+    effects.add(settings, 'Blur', 0.0, 1.0).step(0.01).onChange((value) => {
       this.animations.BLUR = value / 100.0;
     });
 
-    this._gui.add(settings, 'Noise', 0.0, 20.0).step(0.1).onChange((value) => {
+    effects.add(settings, 'Noise', 0.0, 20.0).step(0.1).onChange((value) => {
       this.animations.NOISE = value;
     });
 
-    this._gui.add(settings, 'Zoom', 1.0, 2.0).step(0.125).onChange((value) => {
+    effects.add(settings, 'Zoom', 1.0, 2.0).step(0.125).onChange((value) => {
       this.animations.ZOOM = value;
     });
 
-    this._gui.add(settings, 'Opacity', 0.0, 1.0).step(0.01).onChange((value) => {
+    effects.add(settings, 'Opacity', 0.0, 1.0).step(0.01).onChange((value) => {
       this.shaderUniforms.alpha.value = value;
+      this.animations.ALPHA = value;
     });
 
-    this._gui.add(settings, 'showOnSlide').onFinishChange((value) => {
+    effects.add(settings, 'showOnSlide').onFinishChange((value) => {
       this.animations.ON_SLIDE = value;
 
       if (this.animations.ON_SLIDE) {
@@ -191,6 +189,23 @@ export default class VideoGlitch {
         this.blurUniforms.distortion.value = 0.0;
       }
     });
+
+    this._gui.add(this.animations, 'SLIDE_ON_X');
+    this._gui.add(settings, 'slideDistanceX', -this.width, this.width).onChange((value) => {
+      this.slide.x.step = value < 0 ? -1 : 1;
+      this.slide.x.to = Math.abs(value);
+    });
+
+    this._gui.add(this.animations, 'SLIDE_ON_Y');
+    this._gui.add(settings, 'slideDistanceY', -this.height, this.height).onChange((value) => {
+      this.slide.y.step = value < 0 ? -1 : 1;
+      this.slide.y.to = Math.abs(value);
+    });
+
+    this._gui.add(this.animations, 'SLIDE_BACK');
+    this._gui.add(settings, 'Slide');
+
+    effects.open();
   }
 
   createBlurShader() {
@@ -258,22 +273,6 @@ export default class VideoGlitch {
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
   }
 
-  handleUserEvents() {
-    // const videoData = this.video.getBoundingClientRect();
-    // const videoLeft = Math.floor(videoData.left);
-    // const videoTop = Math.floor(videoData.top);
-
-    // this.video.addEventListener('mousemove', (event) => {
-    //   if (this.showGlitch) return;
-    //   this.xCoord = event.x - videoLeft;
-    // });
-
-    document.addEventListener('keydown', (event) => {
-      this.slide.x.forwards = true;
-      this.slide.y.forwards = true;
-    });
-  }
-
   render() {
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       const context = this.canvas.getContext('2d');
@@ -296,9 +295,16 @@ export default class VideoGlitch {
     }
 
     if (slide.backwards) {
-      slide.offset -= speed;
       slide.forwards = false;
-      slide.backwards = slide.offset * slide.step > 0.0;
+
+      if (this.animations.SLIDE_BACK) {
+        slide.offset -= speed;
+        slide.backwards = slide.offset * slide.step > 0.0;
+
+      } else {
+        this.shaderUniforms.alpha.value -= this.animations.ALPHA / 20;
+        slide.backwards = this.shaderUniforms.alpha.value > 0.0;
+      }
     }
 
     if (!slide.forwards && !slide.backwards) {
@@ -332,6 +338,15 @@ export default class VideoGlitch {
       this.shaderUniforms.filterColor.value = new THREE.Vector3(
         this._colorFilters.red, this._colorFilters.green, this._colorFilters.blue
       );
+    }
+
+    if (!isSliding) {
+      this.shaderUniforms.alpha.value = this.animations.ALPHA;
+
+      if (this.animations.ON_SLIDE) {
+        this.shaderUniforms.noiseIntensity.value = 0.0;
+        this.blurUniforms.distortion.value = 0.0;
+      }
     }
 
     return isSliding;
@@ -384,7 +399,7 @@ export default class VideoGlitch {
       sizes[i] = showEffect ? this.animations.ZOOM : 1.0;
       i++;
 
-      if (this.animations.LINES && showEffect && !((i + 1) % this.width)) {
+      if (this.animations.LINES && showEffect && !(i % this.width)) {
         row = +(row + 0.2).toFixed(1);
       }
     }
@@ -395,18 +410,4 @@ export default class VideoGlitch {
 
     this.composer.render();
   }
-
-  /* clearVideoStream() {
-    const positions = new Float32Array(this.particles * 3);
-    const colors = new Float32Array(this.particles * 3);
-    const sizes = new Float32Array(this.particles);
-
-    this.geometry.attributes.position = new THREE.BufferAttribute(positions, 3);
-    this.geometry.attributes.color = new THREE.BufferAttribute(colors, 3);
-    this.geometry.attributes.size = new THREE.BufferAttribute(sizes, 1);
-
-    this.geometry.attributes.position.needsUpdate = true;
-    this.geometry.attributes.color.needsUpdate = true;
-    this.geometry.attributes.size.needsUpdate = true;
-  } */
 }
