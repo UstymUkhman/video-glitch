@@ -31,8 +31,10 @@ export default class VideoGlitch {
     };
 
     this.animations = {
-      SLIDE_ON_X: false,
+      SLIDE_DISTANCE: 50.0,
+
       SLIDE_ON_Y: false,
+      SLIDE_ON_X: true,
       SLIDE_BACK: true,
 
       ON_SLIDE: false,
@@ -51,16 +53,18 @@ export default class VideoGlitch {
         backwards: false,
         forwards: false,
         offset: 0.0,
-        step: 1,
-        to: 50.0
+        speed: 15.0,
+        to: 50.0,
+        step: 1
       },
 
       y: {
         backwards: false,
         forwards: false,
         offset: 0.0,
-        step: 1,
-        to: 10.0
+        speed: 30.0,
+        to: 10.0,
+        step: 1
       }
     };
   }
@@ -118,15 +122,6 @@ export default class VideoGlitch {
     this.render();
   }
 
-  /**
-   * TODO:
-   *
-   * Canvas Width
-   * Canvas Height
-   * Slide X Speed
-   * Slide Y Speed
-   */
-
   createEffectsGUI() {
     const colors = this._gui.addFolder('Colors');
     const effects = this._gui.addFolder('Effects');
@@ -134,6 +129,9 @@ export default class VideoGlitch {
     const settings = {
       slideDistanceX: 50.0,
       slideDistanceY: 10.0,
+
+      slideSpeedX: 15.0,
+      slideSpeedY: 30.0,
 
       Lines: false,
       Blur: 0.0,
@@ -190,22 +188,44 @@ export default class VideoGlitch {
       }
     });
 
-    this._gui.add(this.animations, 'SLIDE_ON_X');
+    this._gui.add(this.animations, 'SLIDE_ON_X').onChange(this.setSlideDistance.bind(this));
+
     this._gui.add(settings, 'slideDistanceX', -this.width, this.width).onChange((value) => {
       this.slide.x.step = value < 0 ? -1 : 1;
       this.slide.x.to = Math.abs(value);
+      this.setSlideDistance();
     });
 
-    this._gui.add(this.animations, 'SLIDE_ON_Y');
+    this._gui.add(settings, 'slideSpeedX', 1, 100).onChange((value) => {
+      this.slide.x.speed = value + 5;
+    });
+
+    this._gui.add(this.animations, 'SLIDE_ON_Y').onChange(this.setSlideDistance.bind(this));
+
     this._gui.add(settings, 'slideDistanceY', -this.height, this.height).onChange((value) => {
       this.slide.y.step = value < 0 ? -1 : 1;
       this.slide.y.to = Math.abs(value);
+      this.setSlideDistance();
+    });
+
+    this._gui.add(settings, 'slideSpeedY', 1, 100).onChange((value) => {
+      this.slide.y.speed = value + 5;
     });
 
     this._gui.add(this.animations, 'SLIDE_BACK');
     this._gui.add(settings, 'Slide');
 
     effects.open();
+  }
+
+  setSlideDistance() {
+    let slideDistance = this.animations.SLIDE_ON_X ? this.slide.x.to : this.slide.y.to;
+
+    if (this.animations.SLIDE_ON_X && this.animations.SLIDE_ON_Y) {
+      slideDistance = this.slide.x.to > this.slide.y.to ? this.slide.x.to : this.slide.y.to;
+    }
+
+    this.animations.SLIDE_DISTANCE = slideDistance;
   }
 
   createBlurShader() {
@@ -314,15 +334,18 @@ export default class VideoGlitch {
   }
 
   createEffects() {
-    const fast = this.slide.x.to / 15;
-    const slow = this.slide.x.to / 30;
+    let xSpeed = this.slide.x.forwards ? this.slide.x.speed : this.slide.x.speed * 2;
+    let ySpeed = this.slide.y.forwards ? this.slide.y.speed : this.slide.y.speed * 2;
+
+    xSpeed = this.animations.SLIDE_DISTANCE / xSpeed;
+    ySpeed = this.animations.SLIDE_DISTANCE / ySpeed;
 
     if (this.animations.SLIDE_ON_X) {
-      this.animations.SLIDE_X = !this.animateSlide(this.slide.x, this.slide.x.forwards ? fast : slow);
+      this.animations.SLIDE_X = !this.animateSlide(this.slide.x, xSpeed);
     }
 
     if (this.animations.SLIDE_ON_Y) {
-      this.animations.SLIDE_Y = !this.animateSlide(this.slide.y, slow);
+      this.animations.SLIDE_Y = !this.animateSlide(this.slide.y, ySpeed);
     }
 
     const isSliding = this.animations.SLIDE_X || this.animations.SLIDE_Y;
@@ -334,19 +357,23 @@ export default class VideoGlitch {
       this.blurUniforms.distortion.value = this.animations.BLUR;
     }
 
-    if (!this._colorFilters.showOnSlide || isSliding) {
-      this.shaderUniforms.filterColor.value = new THREE.Vector3(
-        this._colorFilters.red, this._colorFilters.green, this._colorFilters.blue
-      );
-    }
-
     if (!isSliding) {
       this.shaderUniforms.alpha.value = this.animations.ALPHA;
+
+      if (this._colorFilters.showOnSlide) {
+        this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
+      }
 
       if (this.animations.ON_SLIDE) {
         this.shaderUniforms.noiseIntensity.value = 0.0;
         this.blurUniforms.distortion.value = 0.0;
       }
+    }
+
+    if (!this._colorFilters.showOnSlide || isSliding) {
+      this.shaderUniforms.filterColor.value = new THREE.Vector3(
+        this._colorFilters.red, this._colorFilters.green, this._colorFilters.blue
+      );
     }
 
     return isSliding;
