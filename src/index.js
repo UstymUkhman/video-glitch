@@ -73,8 +73,15 @@ export default class VideoGlitch {
   }
 
   startExperiment(container) {
+    this.createVideoStream('video', false);
+
+    this.container = container;
+    this.container.appendChild(this.video);
+  }
+
+  createVideoStream(file, update = true) {
     this.video = document.createElement('video');
-    this.video.src = 'assets/video.mp4';
+    this.video.src = `assets/${file}.mp4`;
 
     this.video.preload = true;
     this.video.loop = true;
@@ -83,13 +90,15 @@ export default class VideoGlitch {
     this.video.width = this.width;
 
     this.video.oncanplay = () => {
+      if (update) {
+        this.gui.__controllers[3].max(this.video.duration);
+        this.gui.__controllers[3].min(0);
+      }
+
       if (this.canvas === null) {
         this.init();
       }
     };
-
-    this.container = container;
-    this.container.appendChild(this.video);
   }
 
   init(reset = false) {
@@ -127,16 +136,22 @@ export default class VideoGlitch {
       this.createBlurShader();
 
       this.video.play();
-      this.showStats();
+      this.createStats();
     }
 
     this.createShaderMaterial();
-    this.createVideoStream();
+    this.createVideoGeometry();
     this.render();
   }
 
   createEffectsGUI() {
     const settings = {
+      Video: 'video',
+
+      videos: [
+        'video'
+      ],
+
       Ratio: '640 x 360',
       maximizeToScreen: false,
 
@@ -166,12 +181,10 @@ export default class VideoGlitch {
       Slide: () => {
         this.slide.x.forwards = true;
         this.slide.y.forwards = true;
-      },
-
-      Show: () => {
-        console.log(':D');
       }
     };
+
+    this.gui.add(settings, 'Video', settings.videos).onChange(this.createVideoStream.bind(this));
 
     this.gui.add(settings, 'Ratio', settings.resolutions).onChange((ratio) => {
       this.setVideoSize(ratio, settings.maximizeToScreen);
@@ -252,9 +265,7 @@ export default class VideoGlitch {
     });
 
     slide.add(this.animations, 'SLIDE_BACK');
-
     this.gui.add(settings, 'Slide');
-    this.gui.add(settings, 'Show');
   }
 
   setVideoSize(resolution, maximize) {
@@ -275,6 +286,12 @@ export default class VideoGlitch {
     this.video.style.width = `${width}px`;
 
     if (this.resolution !== resolution) {
+      this.gui.__folders.Slide.__controllers[4].min(-height);
+      this.gui.__folders.Slide.__controllers[4].max(height);
+
+      this.gui.__folders.Slide.__controllers[1].min(-width);
+      this.gui.__folders.Slide.__controllers[1].max(width);
+
       cancelAnimationFrame(this.frameId);
       this.renderer.domElement.remove();
 
@@ -324,6 +341,15 @@ export default class VideoGlitch {
     });
   }
 
+  createStats() {
+    if (!this.stats) {
+      this.stats = new Stats();
+    }
+
+    this.stats.showPanel(0);
+    document.body.appendChild(this.stats.dom);
+  }
+
   createShaderMaterial() {
     const horizontalBlur = new THREE.ShaderPass(this.horizontalBlurShader);
     const verticalBlur = new THREE.ShaderPass(this.verticalBlurShader);
@@ -350,7 +376,7 @@ export default class VideoGlitch {
     verticalBlur.renderToScreen = true;
   }
 
-  createVideoStream() {
+  createVideoGeometry() {
     const context = this.canvas.getContext('2d');
 
     context.drawImage(this.video, 0, 0, this.width, this.height);
@@ -368,15 +394,6 @@ export default class VideoGlitch {
     this.geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
-  }
-
-  showStats() {
-    if (!this.stats) {
-      this.stats = new Stats();
-    }
-
-    this.stats.showPanel(0);
-    document.body.appendChild(this.stats.dom);
   }
 
   render() {
