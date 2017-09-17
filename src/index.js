@@ -5,25 +5,26 @@ require('three/examples/js/postprocessing/RenderPass');
 require('three/examples/js/postprocessing/MaskPass');
 require('three/examples/js/postprocessing/ShaderPass');
 
-// import Detector from 'three/examples/js/Detector';
-// import Stats from 'three/examples/js/libs/stats.min';
 import dat from 'three/examples/js/libs/dat.gui.min';
+import Stats from 'three/examples/js/libs/stats.min';
+import Detector from 'three/examples/js/Detector';
 
 export default class VideoGlitch {
   constructor() {
     this._name = 'VideoGlitch';
-    this._gui = new dat.GUI();
+    this.gui = new dat.GUI();
 
     this.container = null;
     this.particles = null;
     this.canvas = null;
+    this.stats = null;
 
-    this.height = 360;
-    this.width = 640;
+    this.height = 360; // 540;
+    this.width = 640; // 960;
 
     this.ratio = this.width / this.height;
 
-    this._colorFilters = {
+    this.colorFilters = {
       red: 0.0,
       green: 0.0,
       blue: 0.0,
@@ -76,12 +77,12 @@ export default class VideoGlitch {
     this.video.preload = true;
     this.video.loop = true;
 
-    this.video.height = 360;
-    this.video.width = 640;
+    this.video.height = this.height;
+    this.video.width = this.width;
 
     this.video.oncanplay = () => {
       if (this.canvas === null) {
-        this._init();
+        this.init();
       }
     };
 
@@ -89,7 +90,12 @@ export default class VideoGlitch {
     this.container.appendChild(this.video);
   }
 
-  _init() {
+  init() {
+    if (!Detector.webgl) {
+      document.body.appendChild(Detector.getWebGLErrorMessage());
+      return;
+    }
+
     this.canvas = document.createElement('canvas');
     this.canvas.height = this.height;
     this.canvas.width = this.width;
@@ -119,12 +125,13 @@ export default class VideoGlitch {
     this.createVideoStream();
 
     this.video.play();
+    this.showStats();
     this.render();
   }
 
   createEffectsGUI() {
-    const colors = this._gui.addFolder('Colors');
-    const effects = this._gui.addFolder('Effects');
+    const colors = this.gui.addFolder('Colors');
+    const effects = this.gui.addFolder('Effects');
 
     const settings = {
       slideDistanceX: 50.0,
@@ -146,14 +153,14 @@ export default class VideoGlitch {
       }
     };
 
-    colors.add(this._colorFilters, 'red', 0.0, 1.0).step(0.01);
-    colors.add(this._colorFilters, 'green', 0.0, 1.0).step(0.01);
-    colors.add(this._colorFilters, 'blue', 0.0, 1.0).step(0.01);
+    colors.add(this.colorFilters, 'red', 0.0, 1.0).step(0.01);
+    colors.add(this.colorFilters, 'green', 0.0, 1.0).step(0.01);
+    colors.add(this.colorFilters, 'blue', 0.0, 1.0).step(0.01);
 
-    colors.add(this._colorFilters, 'showOnSlide').onFinishChange((value) => {
-      this._colorFilters.showOnSlide = value;
+    colors.add(this.colorFilters, 'showOnSlide').onFinishChange((value) => {
+      this.colorFilters.showOnSlide = value;
 
-      if (this._colorFilters.showOnSlide) {
+      if (this.colorFilters.showOnSlide) {
         this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
       }
     });
@@ -188,32 +195,32 @@ export default class VideoGlitch {
       }
     });
 
-    this._gui.add(this.animations, 'SLIDE_ON_X').onChange(this.setSlideDistance.bind(this));
+    this.gui.add(this.animations, 'SLIDE_ON_X').onChange(this.setSlideDistance.bind(this));
 
-    this._gui.add(settings, 'slideDistanceX', -this.width, this.width).onChange((value) => {
+    this.gui.add(settings, 'slideDistanceX', -this.width, this.width).onChange((value) => {
       this.slide.x.step = value < 0 ? -1 : 1;
       this.slide.x.to = Math.abs(value);
       this.setSlideDistance();
     });
 
-    this._gui.add(settings, 'slideSpeedX', 1, 100).onChange((value) => {
-      this.slide.x.speed = value + 5;
+    this.gui.add(settings, 'slideSpeedX', 1, 100).onChange((value) => {
+      this.slide.x.speed = value;
     });
 
-    this._gui.add(this.animations, 'SLIDE_ON_Y').onChange(this.setSlideDistance.bind(this));
+    this.gui.add(this.animations, 'SLIDE_ON_Y').onChange(this.setSlideDistance.bind(this));
 
-    this._gui.add(settings, 'slideDistanceY', -this.height, this.height).onChange((value) => {
+    this.gui.add(settings, 'slideDistanceY', -this.height, this.height).onChange((value) => {
       this.slide.y.step = value < 0 ? -1 : 1;
       this.slide.y.to = Math.abs(value);
       this.setSlideDistance();
     });
 
-    this._gui.add(settings, 'slideSpeedY', 1, 100).onChange((value) => {
-      this.slide.y.speed = value + 5;
+    this.gui.add(settings, 'slideSpeedY', 1, 100).onChange((value) => {
+      this.slide.y.speed = value;
     });
 
-    this._gui.add(this.animations, 'SLIDE_BACK');
-    this._gui.add(settings, 'Slide');
+    this.gui.add(this.animations, 'SLIDE_BACK');
+    this.gui.add(settings, 'Slide');
 
     effects.open();
   }
@@ -293,6 +300,16 @@ export default class VideoGlitch {
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
   }
 
+  showStats() {
+    if (!this.stats) {
+      this.stats = new Stats();
+    }
+
+    this.stats.showPanel(0);
+    this.stats.domElement.style.top = '25px';
+    document.body.appendChild(this.stats.dom);
+  }
+
   render() {
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       const context = this.canvas.getContext('2d');
@@ -360,7 +377,7 @@ export default class VideoGlitch {
     if (!isSliding) {
       this.shaderUniforms.alpha.value = this.animations.ALPHA;
 
-      if (this._colorFilters.showOnSlide) {
+      if (this.colorFilters.showOnSlide) {
         this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
       }
 
@@ -370,9 +387,9 @@ export default class VideoGlitch {
       }
     }
 
-    if (!this._colorFilters.showOnSlide || isSliding) {
+    if (!this.colorFilters.showOnSlide || isSliding) {
       this.shaderUniforms.filterColor.value = new THREE.Vector3(
-        this._colorFilters.red, this._colorFilters.green, this._colorFilters.blue
+        this.colorFilters.red, this.colorFilters.green, this.colorFilters.blue
       );
     }
 
@@ -436,5 +453,6 @@ export default class VideoGlitch {
     this.geometry.attributes.size.needsUpdate = true;
 
     this.composer.render();
+    this.stats.update();
   }
 }
