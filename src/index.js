@@ -19,8 +19,8 @@ export default class VideoGlitch {
     this.canvas = null;
     this.stats = null;
 
-    this.height = 360; // 540;
-    this.width = 640; // 960;
+    this.height = 360;
+    this.width = 640;
 
     this.ratio = this.width / this.height;
 
@@ -115,6 +115,7 @@ export default class VideoGlitch {
       alpha: true
     });
 
+    this.renderer.domElement.id = 'video-canvas';
     this.renderer.setSize(this.width, this.height);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.container.appendChild(this.renderer.domElement);
@@ -130,15 +131,19 @@ export default class VideoGlitch {
   }
 
   createEffectsGUI() {
-    const colors = this.gui.addFolder('Colors');
-    const effects = this.gui.addFolder('Effects');
-
     const settings = {
-      slideDistanceX: 50.0,
-      slideDistanceY: 10.0,
+      Ratio: '640 x 360',
+      maximizeToScreen: false,
 
-      slideSpeedX: 15.0,
-      slideSpeedY: 30.0,
+      resolutions: [
+        '640 x 360',
+        '960 x 540',
+        '1280 x 720',
+        '1366 x 768',
+        '1600 x 900',
+        '1920 x 1080',
+        '2560 x 1440'
+      ],
 
       Lines: false,
       Blur: 0.0,
@@ -147,11 +152,28 @@ export default class VideoGlitch {
       Opacity: 0.5,
       showOnSlide: false,
 
+      slideDistanceX: 50.0,
+      slideDistanceY: 10.0,
+
+      slideSpeedX: 15.0,
+      slideSpeedY: 30.0,
+
       Slide: () => {
         this.slide.x.forwards = true;
         this.slide.y.forwards = true;
       }
     };
+
+    this.gui.add(settings, 'Ratio', settings.resolutions).onChange((ratio) => {
+      this.setVideoSize(ratio, settings.maximizeToScreen);
+    });
+
+    this.gui.add(settings, 'maximizeToScreen').onChange((maximize) => {
+      this.setVideoSize(`${this.video.width} x ${this.video.height}px`, maximize);
+    });
+
+    const colors = this.gui.addFolder('Colors');
+    const effects = this.gui.addFolder('Effects');
 
     colors.add(this.colorFilters, 'red', 0.0, 1.0).step(0.01);
     colors.add(this.colorFilters, 'green', 0.0, 1.0).step(0.01);
@@ -223,6 +245,22 @@ export default class VideoGlitch {
     this.gui.add(settings, 'Slide');
 
     effects.open();
+  }
+
+  setVideoSize(resolution, maximize = false) {
+    let height = `${resolution.split(' x ')[1]}px`;
+    let width = `${resolution.split(' x ')[0]}px`;
+
+    if (maximize) {
+      width = '99.56vw';
+      height = '56vw';
+    }
+
+    this.renderer.domElement.style.height = height;
+    this.renderer.domElement.style.width = width;
+
+    this.video.style.height = height;
+    this.video.style.width = width;
   }
 
   setSlideDistance() {
@@ -306,7 +344,6 @@ export default class VideoGlitch {
     }
 
     this.stats.showPanel(0);
-    this.stats.domElement.style.top = '25px';
     document.body.appendChild(this.stats.dom);
   }
 
