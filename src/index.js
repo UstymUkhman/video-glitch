@@ -24,6 +24,8 @@ export default class VideoGlitch {
 
     this.ratio = this.width / this.height;
     this.resolution = '640 x 360';
+
+    this.SHOW_GLITCH = false;
     this.maximize = false;
 
     this.colorFilters = {
@@ -34,7 +36,9 @@ export default class VideoGlitch {
     };
 
     this.animations = {
+      EFFECTS_DURATION: 2.5,
       SLIDE_DISTANCE: 50.0,
+      SHOW_EFFECTS: false,
 
       SLIDE_ON_Y: false,
       SLIDE_ON_X: true,
@@ -172,6 +176,9 @@ export default class VideoGlitch {
       Opacity: 0.5,
       showOnSlide: false,
 
+      effectsDuration: 2.5,
+      fixedEffects: false,
+
       slideDistanceX: 50.0,
       slideDistanceY: 10.0,
 
@@ -181,6 +188,25 @@ export default class VideoGlitch {
       Slide: () => {
         this.slide.x.forwards = true;
         this.slide.y.forwards = true;
+
+        this.SHOW_GLITCH = true;
+      },
+
+      Show: () => {
+        if (this.animations.SHOW_EFFECTS) {
+          return;
+        }
+
+        const timeout = this.animations.EFFECTS_DURATION * 1000;
+
+        this.animations.SHOW_EFFECTS = true;
+        this.SHOW_GLITCH = true;
+
+        setTimeout(() => {
+          this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
+          this.animations.SHOW_EFFECTS = false;
+          this.resetUniformsValues();
+        }, timeout);
       }
     };
 
@@ -204,10 +230,6 @@ export default class VideoGlitch {
 
     colors.add(this.colorFilters, 'showOnSlide').onFinishChange((value) => {
       this.colorFilters.showOnSlide = value;
-
-      if (this.colorFilters.showOnSlide) {
-        this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
-      }
     });
 
     effects.add(settings, 'Lines').onFinishChange((value) => {
@@ -233,11 +255,6 @@ export default class VideoGlitch {
 
     effects.add(settings, 'showOnSlide').onFinishChange((value) => {
       this.animations.ON_SLIDE = value;
-
-      if (this.animations.ON_SLIDE) {
-        this.shaderUniforms.noiseIntensity.value = 0.0;
-        this.blurUniforms.distortion.value = 0.0;
-      }
     });
 
     slide.add(this.animations, 'SLIDE_ON_X').onChange(this.setSlideDistance.bind(this));
@@ -266,6 +283,22 @@ export default class VideoGlitch {
 
     slide.add(this.animations, 'SLIDE_BACK');
     this.gui.add(settings, 'Slide');
+
+    this.gui.add(settings, 'effectsDuration', 0, 5.0).step(0.1).onChange((value) => {
+      this.animations.EFFECTS_DURATION = value;
+    });
+
+    this.gui.add(settings, 'fixedEffects').onChange((fixed) => {
+      this.animations.SHOW_EFFECTS = fixed;
+      this.SHOW_GLITCH = fixed;
+
+      if (!fixed) {
+        this.animations.SHOW_EFFECTS = false;
+        this.resetUniformsValues();
+      }
+    });
+
+    this.gui.add(settings, 'Show');
   }
 
   setVideoSize(resolution, maximize) {
@@ -417,8 +450,12 @@ export default class VideoGlitch {
     const HEIGHT_2 = (this.height - 1.0) / 2.0;
     const WIDTH_2 = (this.width - 1.0) / 2.0;
 
-    const onSlide = this.createEffects();
+    let onSlide = false;
     let row = 0.0;
+
+    if (this.SHOW_GLITCH) {
+      onSlide = this.createEffects();
+    }
 
     for (let i = 0; i < this.particles;) {
       const f = row - parseInt(row, 0);
@@ -436,7 +473,11 @@ export default class VideoGlitch {
       let g = this.imageData[i4 + 1] / 255;
       let b = this.imageData[i4 + 2] / 255;
 
-      const showEffect = this.animations.ON_SLIDE ? onSlide : true;
+      let showEffect = false;
+
+      if (this.animations.ON_SLIDE || this.animations.SHOW_EFFECTS) {
+        showEffect = !onSlide ? this.animations.SHOW_EFFECTS : true;
+      }
 
       if (this.animations.LINES && showEffect && f < 0.3) {
         offsetX = 0.0;
@@ -486,7 +527,7 @@ export default class VideoGlitch {
 
     const isSliding = this.animations.SLIDE_X || this.animations.SLIDE_Y;
 
-    if (!this.animations.ON_SLIDE || (this.animations.ON_SLIDE && isSliding)) {
+    if (this.animations.SHOW_EFFECTS || (this.animations.ON_SLIDE && isSliding)) {
       this.shaderUniforms.time.value = Number(String(Date.now()).slice(-5)) / 10000;
       this.shaderUniforms.noiseIntensity.value = this.animations.NOISE;
 
@@ -500,13 +541,12 @@ export default class VideoGlitch {
         this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
       }
 
-      if (this.animations.ON_SLIDE) {
-        this.shaderUniforms.noiseIntensity.value = 0.0;
-        this.blurUniforms.distortion.value = 0.0;
+      if (this.animations.ON_SLIDE && !this.animations.SHOW_EFFECTS) {
+        this.resetUniformsValues();
       }
     }
 
-    if (!this.colorFilters.showOnSlide || isSliding) {
+    if (this.animations.SHOW_EFFECTS || (this.colorFilters.showOnSlide && isSliding)) {
       this.shaderUniforms.filterColor.value = new THREE.Vector3(
         this.colorFilters.red, this.colorFilters.green, this.colorFilters.blue
       );
@@ -540,5 +580,11 @@ export default class VideoGlitch {
       slide.offset = 0.0;
       return true;
     }
+  }
+
+  resetUniformsValues() {
+    this.shaderUniforms.noiseIntensity.value = 0.0;
+    this.blurUniforms.distortion.value = 0.0;
+    this.SHOW_GLITCH = false;
   }
 }
