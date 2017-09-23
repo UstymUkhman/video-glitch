@@ -284,7 +284,7 @@ export default class VideoGlitch {
     slide.add(this.animations, 'SLIDE_BACK');
     this.gui.add(settings, 'Slide');
 
-    this.gui.add(settings, 'effectsDuration', 0, 5.0).step(0.1).onChange((value) => {
+    this.gui.add(settings, 'effectsDuration', 0, 10.0).step(0.1).onChange((value) => {
       this.animations.EFFECTS_DURATION = value;
     });
 
@@ -293,6 +293,7 @@ export default class VideoGlitch {
       this.SHOW_GLITCH = fixed;
 
       if (!fixed) {
+        this.shaderUniforms.filterColor.value = new THREE.Vector3(0.0, 0.0, 0.0);
         this.animations.SHOW_EFFECTS = false;
         this.resetUniformsValues();
       }
@@ -353,6 +354,7 @@ export default class VideoGlitch {
     }
 
     this.animations.SLIDE_DISTANCE = slideDistance;
+    this.SHOW_GLITCH = false;
   }
 
   createBlurShader() {
