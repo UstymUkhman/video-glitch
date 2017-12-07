@@ -415,13 +415,10 @@ export default class VideoGlitch {
     const particles = this.width * this.height;
 
     context.drawImage(this.video, 0, 0, this.width, this.height);
-
     this.imageData = context.getImageData(0, 0, this.width, this.height).data;
-    this.geometry = new THREE.BufferGeometry();
 
+    this.geometry = new THREE.BufferGeometry();
     this.geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(particles * 3), 3));
-    this.geometry.addAttribute('color', new THREE.BufferAttribute(new Float32Array(particles * 3), 3));
-    // this.geometry.addAttribute('size', new THREE.BufferAttribute(new Float32Array(particles), 1));
 
     this.setParticlesPosition(particles);
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
@@ -429,8 +426,6 @@ export default class VideoGlitch {
 
   setParticlesPosition(particles) {
     const positions = this.geometry.attributes.position.array;
-    // const colors = this.geometry.attributes.color.array;
-    // const sizes = this.geometry.attributes.size.array;
 
     const HEIGHT_2 = (this.height - 1.0) / 2.0;
     const WIDTH_2 = (this.width - 1.0) / 2.0;
@@ -444,12 +439,6 @@ export default class VideoGlitch {
 
       positions[i3] = x - WIDTH_2;
       positions[i31] = y + HEIGHT_2;
-
-      // colors[i3] = 0.5;
-      // colors[i31] = 0.5;
-      // colors[i3 + 2] = 0.5;
-
-      // sizes[i] = 1.0;
     }
   }
 
