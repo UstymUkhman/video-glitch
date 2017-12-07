@@ -15,7 +15,6 @@ export default class VideoGlitch {
     this.gui = new dat.GUI();
 
     this.container = null;
-    this.particles = null;
     this.canvas = null;
     this.stats = null;
 
@@ -413,22 +412,45 @@ export default class VideoGlitch {
 
   createVideoGeometry() {
     const context = this.canvas.getContext('2d');
+    const particles = this.width * this.height;
 
     context.drawImage(this.video, 0, 0, this.width, this.height);
 
     this.imageData = context.getImageData(0, 0, this.width, this.height).data;
     this.geometry = new THREE.BufferGeometry();
-    this.particles = this.width * this.height;
 
-    const positions = new Float32Array(this.particles * 3);
-    const colors = new Float32Array(this.particles * 3);
-    const sizes = new Float32Array(this.particles);
+    this.geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(particles * 3), 3));
+    this.geometry.addAttribute('color', new THREE.BufferAttribute(new Float32Array(particles * 3), 3));
+    // this.geometry.addAttribute('size', new THREE.BufferAttribute(new Float32Array(particles), 1));
 
-    this.geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-    this.geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
-    this.geometry.addAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
+    this.setParticlesPosition(particles);
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
+  }
+
+  setParticlesPosition(particles) {
+    const positions = this.geometry.attributes.position.array;
+    // const colors = this.geometry.attributes.color.array;
+    // const sizes = this.geometry.attributes.size.array;
+
+    const HEIGHT_2 = (this.height - 1.0) / 2.0;
+    const WIDTH_2 = (this.width - 1.0) / 2.0;
+
+    for (let i = 0; i < particles; i++) {
+      const i3 = i * 3;
+      const i31 = i3 + 1;
+
+      const x = (~~(i % this.width));
+      const y = -(~~(i / this.width));
+
+      positions[i3] = x - WIDTH_2;
+      positions[i31] = y + HEIGHT_2;
+
+      // colors[i3] = 0.5;
+      // colors[i31] = 0.5;
+      // colors[i3 + 2] = 0.5;
+
+      // sizes[i] = 1.0;
+    }
   }
 
   render() {
@@ -438,13 +460,16 @@ export default class VideoGlitch {
       context.drawImage(this.video, 0, 0, this.width, this.height);
 
       this.imageData = context.getImageData(0, 0, this.width, this.height).data;
-      this.updateVideoStream();
+      // this.updateVideoStream();
+
+      this.composer.render();
+      this.stats.update();
     }
 
     this.frameId = requestAnimationFrame(this.render.bind(this));
   }
 
-  updateVideoStream() {
+  /* updateVideoStream() {
     const positions = this.geometry.attributes.position.array;
     const colors = this.geometry.attributes.color.array;
     const sizes = this.geometry.attributes.size.array;
@@ -510,7 +535,7 @@ export default class VideoGlitch {
 
     this.composer.render();
     this.stats.update();
-  }
+  } */
 
   createEffects() {
     let xSpeed = this.slide.x.forwards ? this.slide.x.speed : this.slide.x.speed * 2;
