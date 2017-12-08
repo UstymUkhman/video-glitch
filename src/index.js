@@ -391,6 +391,7 @@ export default class VideoGlitch {
     this.shaderUniforms = {
       filterColor: { type: 'c', value: new THREE.Vector3(0.0, 0.0, 0.0) },
       noiseIntensity: { type: 'f', value: 10.0 },
+      color: { type: 't', value: null },
       alpha: { type: 'f', value: 0.5 },
       time: { type: 'f', value: 0.0 }
     };
@@ -417,11 +418,22 @@ export default class VideoGlitch {
     context.drawImage(this.video, 0, 0, this.width, this.height);
     this.imageData = context.getImageData(0, 0, this.width, this.height).data;
 
+    this.colors = new Float32Array(this.imageData.length);
+
+    this.data = new THREE.DataTexture(
+      this.colors,
+      this.width,
+      this.height,
+      THREE.RGBFormat,
+      THREE.FloatType
+    );
+
     this.geometry = new THREE.BufferGeometry();
     this.geometry.addAttribute('position', new THREE.BufferAttribute(new Float32Array(particles * 3), 3));
 
     this.setParticlesPosition(particles);
     this.scene.add(new THREE.Points(this.geometry, this.shaderMaterial));
+
   }
 
   setParticlesPosition(particles) {
@@ -449,6 +461,18 @@ export default class VideoGlitch {
       context.drawImage(this.video, 0, 0, this.width, this.height);
 
       this.imageData = context.getImageData(0, 0, this.width, this.height).data;
+
+      // console.log(this.imageData);
+      // debugger;
+
+      this.data.image.data = new Float32Array(this.imageData);
+
+      this.data.needsUpdate = true;
+      this.shaderUniforms.color.value = this.data;
+
+      // console.log(this.imageData);
+      // debugger
+
       // this.updateVideoStream();
 
       this.composer.render();

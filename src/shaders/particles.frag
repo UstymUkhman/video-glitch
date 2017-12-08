@@ -19,17 +19,17 @@ vec4 noise(float intensity) {
 }
 
 void main(void) {
-  vec4 color = vec4(vColor, alpha);
-  vec4 grain = vec4(0.0);
+  // vec4 color = vec4(vColor, alpha);
+  // vec4 grain = vec4(0.0);
 
-  color.r += color.r * filterColor.r;
-  color.g += color.g * filterColor.g;
-  color.b += color.b * filterColor.b;
+  // color.r += color.r * filterColor.r;
+  // color.g += color.g * filterColor.g;
+  // color.b += color.b * filterColor.b;
 
-  if (noiseIntensity > 0.0) {
-    grain = noise(noiseIntensity);
-  }
+  // if (noiseIntensity > 0.0) {
+  //   grain = noise(noiseIntensity);
+  // }
 
   // gl_FragColor = vec4(color.rgb * color.a, color.a) + grain;
-  gl_FragColor = vec4(vec3(1.0, 0.0, 0.0) * 0.5, 0.5) + grain;
+  gl_FragColor = vec4(vColor, 0.5);
 }
