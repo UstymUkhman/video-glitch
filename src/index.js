@@ -1,11 +1,14 @@
 // http://felixturner.github.io/bad-tv-shader/example/
 
-require('three/examples/js/shaders/CopyShader');
 require('three/examples/js/postprocessing/EffectComposer');
-
 require('three/examples/js/postprocessing/RenderPass');
-require('three/examples/js/postprocessing/MaskPass');
 require('three/examples/js/postprocessing/ShaderPass');
+require('three/examples/js/postprocessing/MaskPass');
+
+require('three/examples/js/shaders/HorizontalBlurShader');
+require('three/examples/js/shaders/VerticalBlurShader');
+require('three/examples/js/shaders/RGBShiftShader');
+require('three/examples/js/shaders/CopyShader');
 
 // import dat from 'three/examples/js/libs/dat.gui.min';
 import Stats from 'three/examples/js/libs/stats.min';
@@ -13,10 +16,9 @@ import Detector from 'three/examples/js/Detector';
 
 export default class VideoGlitch {
   constructor() {
-    this.width = 640;
-    this.height = 360;
+    this.width = 1280;
+    this.height = 720;
 
-    this.time = 0.0;
     this.stats = null;
     this.container = null;
 
@@ -64,10 +66,15 @@ export default class VideoGlitch {
 
     this.createWebGLEnvironment();
     this.createVideoGeometry();
-    this.createGlitchShader();
-    this.createBlurShader();
-    this.createStats();
+    this.createGlitchParams();
 
+    // this.createRGBShiftShader();
+    this.createOverlayShader();
+    // this.createGlitchShader();
+    // this.createBlurShader();
+    this.createCopyShader();
+
+    this.createStats();
     this.video.play();
     this.render();
   }
@@ -100,12 +107,39 @@ export default class VideoGlitch {
     ));
   }
 
+  createGlitchParams() {
+    this.effects = {
+      alpha: 1.0,
+      blur: 0.0, // (0.0 ~ 2.048) / 512.0
+      time: 0.0,
+      size: 1.0,
+
+      overlay: {
+        sIntensity: 2.0,
+        nIntensity: 0.5,
+        sCount: 320
+      },
+
+      glitch: {
+        amount: 0.15,
+        snow: 1.0
+      },
+
+      rgbShift: {
+        amount: 0.0, // 0.0 ~ 0.1
+        angle: 0.0 // (0.0 ~ 2.0) * Math.PI
+      }
+    };
+  }
+
   createGlitchShader() {
     this.glitchUniforms = {
-      tDiffuse: { type: 't', value: null },
-      amount: { type: 'f', value: 0.15 },
-      time: { type: 'f', value: 0.0 },
-      size: { type: 'f', value: 1.0 }
+      amount: { type: 'f', value: this.effects.glitch.amount },
+      snow: { type: 'f', value: this.effects.glitch.snow },
+      alpha: { type: 'f', value: this.effects.alpha },
+      size: { type: 'f', value: this.effects.size },
+      time: { type: 'f', value: this.effects.time },
+      tDiffuse: { type: 't', value: null }
     };
 
     const glitchPass = new THREE.ShaderPass(
@@ -120,30 +154,52 @@ export default class VideoGlitch {
   }
 
   createBlurShader() {
-    this.blurUniforms = {
-      distortion: { type: 'f', value: 0.0 },
+    THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
+    THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur;
+
+    this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
+    this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
+
+    this.composer.addPass(this.horizontalBlur);
+    this.composer.addPass(this.verticalBlur);
+
+    this.verticalBlur.renderToScreen = true;
+  }
+
+  createRGBShiftShader() {
+    THREE.RGBShiftShader.uniforms.amount.value = this.effects.rgbShift.amount;
+    THREE.RGBShiftShader.uniforms.angle.value = this.effects.rgbShift.angle;
+
+    this.rgbShift = new THREE.ShaderPass(THREE.RGBShiftShader);
+    this.composer.addPass(this.rgbShift);
+  }
+
+  createOverlayShader() {
+    this.overlayUniforms = {
+      sIntensity: { type: 'f', value: this.effects.overlay.sIntensity },
+      nIntensity: { type: 'f', value: this.effects.overlay.nIntensity },
+      sCount: { type: 'f', value: this.effects.overlay.sCount },
+      time: { type: 'f', value: this.effects.time },
       tDiffuse: { type: 't', value: null }
     };
 
-    const horizontalPass = new THREE.ShaderPass(
+    const overlayPass = new THREE.ShaderPass(
       new THREE.ShaderMaterial({
-        fragmentShader: require('./shaders/blurHorizontal.frag'),
-        vertexShader: require('./shaders/blur.vert'),
-        uniforms: this.blurUniforms
+        fragmentShader: require('./shaders/overlay.frag'),
+        vertexShader: require('./shaders/overlay.vert'),
+        uniforms: this.overlayUniforms
       })
     );
 
-    const verticalPass = new THREE.ShaderPass(
-      new THREE.ShaderMaterial({
-        fragmentShader: require('./shaders/blurVertical.frag'),
-        vertexShader: require('./shaders/blur.vert'),
-        uniforms: this.blurUniforms
-      })
-    );
+    this.composer.addPass(overlayPass);
+  }
 
-    this.composer.addPass(horizontalPass);
-    this.composer.addPass(verticalPass);
-    verticalPass.renderToScreen = true;
+  createCopyShader() {
+    THREE.CopyShader.uniforms.opacity.value = this.effects.alpha;
+    this.copy = new THREE.ShaderPass(THREE.CopyShader);
+
+    this.composer.addPass(this.copy);
+    this.copy.renderToScreen = true;
   }
 
   createStats() {
@@ -156,10 +212,19 @@ export default class VideoGlitch {
   }
 
   render() {
-    this.time += 0.1;
-    this.glitchUniforms.time.value = this.time;
+    this.effects.time += 0.1;
+    this.overlayUniforms.time.value = this.effects.time;
+    // this.glitchUniforms.time.value = this.effects.time;
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+      // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
+      // this.verticalBlur.material.uniforms.v.value = this.effects.blur;
+
+      // this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
+      // this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
+
+      // this.copy.material.uniforms.opacity.value = this.effects.alpha;
+
       this.videoTexture.needsUpdate = true;
       this.composer.render();
       this.stats.update();
