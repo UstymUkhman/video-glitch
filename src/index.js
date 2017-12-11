@@ -69,8 +69,9 @@ export default class VideoGlitch {
     this.createGlitchParams();
 
     // this.createRGBShiftShader();
-    this.createOverlayShader();
+    // this.createOverlayShader();
     // this.createGlitchShader();
+    this.createBadTvShader();
     // this.createBlurShader();
     this.createCopyShader();
 
@@ -114,6 +115,13 @@ export default class VideoGlitch {
       time: 0.0,
       size: 1.0,
 
+      badTv: {
+        distortion2: 1.5,
+        distortion: 1.5,
+        rollSpeed: 0.0,
+        speed: 0.1
+      },
+
       overlay: {
         sIntensity: 2.0,
         nIntensity: 0.5,
@@ -130,40 +138,6 @@ export default class VideoGlitch {
         angle: 0.0 // (0.0 ~ 2.0) * Math.PI
       }
     };
-  }
-
-  createGlitchShader() {
-    this.glitchUniforms = {
-      amount: { type: 'f', value: this.effects.glitch.amount },
-      snow: { type: 'f', value: this.effects.glitch.snow },
-      alpha: { type: 'f', value: this.effects.alpha },
-      size: { type: 'f', value: this.effects.size },
-      time: { type: 'f', value: this.effects.time },
-      tDiffuse: { type: 't', value: null }
-    };
-
-    const glitchPass = new THREE.ShaderPass(
-      new THREE.ShaderMaterial({
-        fragmentShader: require('./shaders/glitch.frag'),
-        vertexShader: require('./shaders/glitch.vert'),
-        uniforms: this.glitchUniforms
-      })
-    );
-
-    this.composer.addPass(glitchPass);
-  }
-
-  createBlurShader() {
-    THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
-    THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur;
-
-    this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
-    this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
-
-    this.composer.addPass(this.horizontalBlur);
-    this.composer.addPass(this.verticalBlur);
-
-    this.verticalBlur.renderToScreen = true;
   }
 
   createRGBShiftShader() {
@@ -194,6 +168,61 @@ export default class VideoGlitch {
     this.composer.addPass(overlayPass);
   }
 
+  createGlitchShader() {
+    this.glitchUniforms = {
+      amount: { type: 'f', value: this.effects.glitch.amount },
+      snow: { type: 'f', value: this.effects.glitch.snow },
+      alpha: { type: 'f', value: this.effects.alpha },
+      size: { type: 'f', value: this.effects.size },
+      time: { type: 'f', value: this.effects.time },
+      tDiffuse: { type: 't', value: null }
+    };
+
+    const glitchPass = new THREE.ShaderPass(
+      new THREE.ShaderMaterial({
+        fragmentShader: require('./shaders/glitch.frag'),
+        vertexShader: require('./shaders/glitch.vert'),
+        uniforms: this.glitchUniforms
+      })
+    );
+
+    this.composer.addPass(glitchPass);
+  }
+
+  createBadTvShader() {
+    this.badTvUniforms = {
+      distortion2: { type: 'f', value: this.effects.badTv.distortion2 },
+      distortion: { type: 'f', value: this.effects.badTv.distortion },
+      rollSpeed: { type: 'f', value: this.effects.badTv.rollSpeed },
+      speed: { type: 'f', value: this.effects.badTv.speed },
+      time: { type: 'f', value: this.effects.time },
+      tDiffuse: { type: 't', value: null }
+    };
+
+    const badTvPass = new THREE.ShaderPass(
+      new THREE.ShaderMaterial({
+        fragmentShader: require('./shaders/bad-tv.frag'),
+        vertexShader: require('./shaders/bad-tv.vert'),
+        uniforms: this.badTvUniforms
+      })
+    );
+
+    this.composer.addPass(badTvPass);
+  }
+
+  createBlurShader() {
+    THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
+    THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur;
+
+    this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
+    this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
+
+    this.composer.addPass(this.horizontalBlur);
+    this.composer.addPass(this.verticalBlur);
+
+    this.verticalBlur.renderToScreen = true;
+  }
+
   createCopyShader() {
     THREE.CopyShader.uniforms.opacity.value = this.effects.alpha;
     this.copy = new THREE.ShaderPass(THREE.CopyShader);
@@ -213,8 +242,9 @@ export default class VideoGlitch {
 
   render() {
     this.effects.time += 0.1;
-    this.overlayUniforms.time.value = this.effects.time;
+    this.badTvUniforms.time.value = this.effects.time;
     // this.glitchUniforms.time.value = this.effects.time;
+    // this.overlayUniforms.time.value = this.effects.time;
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
