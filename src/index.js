@@ -70,8 +70,8 @@ export default class VideoGlitch {
 
     // this.createRGBShiftShader();
     // this.createOverlayShader();
-    // this.createGlitchShader();
-    this.createBadTvShader();
+    this.createGlitchShader();
+    // this.createBadTvShader();
     // this.createBlurShader();
     this.createCopyShader();
 
@@ -129,6 +129,7 @@ export default class VideoGlitch {
       },
 
       glitch: {
+        filterColor: new THREE.Color(0.0),
         amount: 0.15,
         snow: 1.0
       },
@@ -157,7 +158,7 @@ export default class VideoGlitch {
       tDiffuse: { type: 't', value: null }
     };
 
-    const overlayPass = new THREE.ShaderPass(
+    const overlay = new THREE.ShaderPass(
       new THREE.ShaderMaterial({
         fragmentShader: require('./shaders/overlay.frag'),
         vertexShader: require('./shaders/overlay.vert'),
@@ -165,20 +166,26 @@ export default class VideoGlitch {
       })
     );
 
-    this.composer.addPass(overlayPass);
+    this.composer.addPass(overlay);
   }
 
   createGlitchShader() {
     this.glitchUniforms = {
+      filterColor: { type: 'c', value: this.effects.glitch.filterColor },
       amount: { type: 'f', value: this.effects.glitch.amount },
       snow: { type: 'f', value: this.effects.glitch.snow },
       alpha: { type: 'f', value: this.effects.alpha },
       size: { type: 'f', value: this.effects.size },
+
+      sIntensity: { type: 'f', value: this.effects.overlay.sIntensity },
+      nIntensity: { type: 'f', value: this.effects.overlay.nIntensity },
+      sCount: { type: 'f', value: this.effects.overlay.sCount },
+
       time: { type: 'f', value: this.effects.time },
       tDiffuse: { type: 't', value: null }
     };
 
-    const glitchPass = new THREE.ShaderPass(
+    this.glitch = new THREE.ShaderPass(
       new THREE.ShaderMaterial({
         fragmentShader: require('./shaders/glitch.frag'),
         vertexShader: require('./shaders/glitch.vert'),
@@ -186,7 +193,7 @@ export default class VideoGlitch {
       })
     );
 
-    this.composer.addPass(glitchPass);
+    this.composer.addPass(this.glitch);
   }
 
   createBadTvShader() {
@@ -242,8 +249,8 @@ export default class VideoGlitch {
 
   render() {
     this.effects.time += 0.1;
-    this.badTvUniforms.time.value = this.effects.time;
-    // this.glitchUniforms.time.value = this.effects.time;
+    // this.badTvUniforms.time.value = this.effects.time;
+    this.glitchUniforms.time.value = this.effects.time;
     // this.overlayUniforms.time.value = this.effects.time;
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
@@ -254,6 +261,10 @@ export default class VideoGlitch {
       // this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
 
       // this.copy.material.uniforms.opacity.value = this.effects.alpha;
+
+      // this.glitch.material.uniforms.filterColor.value.r = 0.0;
+      // this.glitch.material.uniforms.filterColor.value.g = 0.0;
+      // this.glitch.material.uniforms.filterColor.value.b = 0.0;
 
       this.videoTexture.needsUpdate = true;
       this.composer.render();

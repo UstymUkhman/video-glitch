@@ -9,7 +9,7 @@ uniform float time;
 
 varying vec2 vUv;
 
-void main(void) {
+void main (void) {
   vec4 cTextureScreen = texture2D(tDiffuse, vUv);
   // float dx = rand(vUv + time);
 
