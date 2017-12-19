@@ -14,25 +14,30 @@ uniform float amount;
 uniform float alpha;
 uniform float time;
 uniform float snow;
+uniform int show;
 
 varying vec2 vUv;
 
 void main (void) {
+  vec3 result;
   vec4 color = texture2D(tDiffuse, vUv);
-  float line = sin(vUv.y * sCount) * 0.2;
 
-  vec3 result = color.rgb * vec3(line) * sIntensity;
-  result = color.rgb + clamp(nIntensity, 0.0, 1.0) * (result - color.rgb);
+  if (show == 1) {
+    float line = sin(vUv.y * sCount) * 0.2;
 
-  result.r += result.r * filterColor.r;
-  result.g += result.g * filterColor.g;
-  result.b += result.b * filterColor.b;
+    result = color.rgb * vec3(line) * sIntensity;
+    result = color.rgb + clamp(nIntensity, 0.0, 1.0) * (result - color.rgb);
 
-  float xs = floor(gl_FragCoord.x / snow);
-  float ys = floor(gl_FragCoord.y / snow);
+    result.r += result.r * filterColor.r;
+    result.g += result.g * filterColor.g;
+    result.b += result.b * filterColor.b;
 
-  vec2 noise = vec2(xs * time, ys * time);
-  vec4 grain = vec4(rand(noise) * amount);
+    float xs = floor(gl_FragCoord.x / snow);
+    float ys = floor(gl_FragCoord.y / snow);
 
-  gl_FragColor = vec4(result.rgb * alpha, alpha) + grain;
+    vec2 noise = vec2(xs * time, ys * time);
+    color = vec4(result.rgb * alpha, alpha) + vec4(rand(noise) * amount);
+  }
+
+  gl_FragColor = color;
 }

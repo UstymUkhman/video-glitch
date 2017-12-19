@@ -55,9 +55,7 @@ float snoise (vec2 v) {
 
 void main (void) {
   vec2 p = vUv;
-
-  float ty = time * speed;
-  float yt = p.y - ty;
+  float yt = p.y - time * speed;
 
   float offset = snoise(vec2(yt * 3.0, 0.0)) * 0.2;
 

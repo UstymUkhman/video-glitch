@@ -10,7 +10,7 @@ require('three/examples/js/shaders/VerticalBlurShader');
 require('three/examples/js/shaders/RGBShiftShader');
 require('three/examples/js/shaders/CopyShader');
 
-// import dat from 'three/examples/js/libs/dat.gui.min';
+import dat from 'three/examples/js/libs/dat.gui.min';
 import Stats from 'three/examples/js/libs/stats.min';
 import Detector from 'three/examples/js/Detector';
 
@@ -22,7 +22,7 @@ export default class VideoGlitch {
     this.stats = null;
     this.container = null;
 
-    // this.gui = new dat.GUI();
+    this.gui = new dat.GUI();
     this.ratio = this.width / this.height;
   }
 
@@ -74,6 +74,7 @@ export default class VideoGlitch {
     // this.createBadTvShader();
     // this.createBlurShader();
     this.createCopyShader();
+    this.createControls();
 
     this.createStats();
     this.video.play();
@@ -110,6 +111,11 @@ export default class VideoGlitch {
 
   createGlitchParams() {
     this.effects = {
+      fixed: false,
+
+      xSlide: 0.0,
+      ySlide: 0.0,
+
       alpha: 1.0,
       blur: 0.0, // (0.0 ~ 2.048) / 512.0
       time: 0.0,
@@ -181,8 +187,12 @@ export default class VideoGlitch {
       nIntensity: { type: 'f', value: this.effects.overlay.nIntensity },
       sCount: { type: 'f', value: this.effects.overlay.sCount },
 
+      xSlide: { type: 'f', value: this.effects.xSlide },
+      ySlide: { type: 'f', value: this.effects.ySlide },
+
       time: { type: 'f', value: this.effects.time },
-      tDiffuse: { type: 't', value: null }
+      tDiffuse: { type: 't', value: null },
+      show: { type: 'i', value: 0 }
     };
 
     this.glitch = new THREE.ShaderPass(
@@ -238,6 +248,30 @@ export default class VideoGlitch {
     this.copy.renderToScreen = true;
   }
 
+  createControls() {
+    const slide = this.gui.addFolder('Slide');
+    const settings = {
+      slide: () => {
+        console.log('Slide');
+      }
+    };
+
+    slide.add(this.effects, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
+    slide.add(this.effects, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
+
+    this.gui.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
+      this.glitchUniforms.show.value = fixed ? 1 : 0;
+    });
+
+    this.gui.add(settings, 'slide').name('Slide');
+
+    // this.gui.add(settings, 'fixedEffects').name('Fixed Effects').onChange((fixed) => {
+
+    //   if (!fixed) {
+    //   }
+    // });
+  }
+
   createStats() {
     if (!this.stats) {
       this.stats = new Stats();
@@ -252,6 +286,13 @@ export default class VideoGlitch {
     // this.badTvUniforms.time.value = this.effects.time;
     this.glitchUniforms.time.value = this.effects.time;
     // this.overlayUniforms.time.value = this.effects.time;
+
+    if (this.effects.fixed) {
+      this.glitchUniforms.xSlide.value = this.effects.xSlide;
+      this.glitchUniforms.ySlide.value = this.effects.ySlide;
+    } else if (this.effects.show && !this.effects.fixed) {
+      this.updateSlideValues();
+    }
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
@@ -272,5 +313,15 @@ export default class VideoGlitch {
     }
 
     this.frameId = requestAnimationFrame(this.render.bind(this));
+  }
+
+  updateSlideValues() {
+    if (this.glitchUniforms.xSlide.value < this.effects.xSlide) {
+      this.glitchUniforms.xSlide.value += 0.01;
+    }
+
+    if (this.glitchUniforms.ySlide.value < this.effects.ySlide) {
+      this.glitchUniforms.ySlide.value += 0.01;
+    }
   }
 }
