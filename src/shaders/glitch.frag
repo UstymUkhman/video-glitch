@@ -93,7 +93,7 @@ void main (void) {
     float ys = floor(gl_FragCoord.y / snow);
 
     vec2 noise = vec2(xs * time, ys * time);
-    color = vec4(result.rgb * alpha, alpha) + vec4(rand(noise) * amount);
+    color = vec4(result.rgb * alpha, alpha) + vec4(rand(noise) * amount / 10.0);
   }
 
   gl_FragColor = color;

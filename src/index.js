@@ -68,10 +68,9 @@ export default class VideoGlitch {
     this.createVideoGeometry();
     this.createGlitchParams();
 
-    // this.createRGBShiftShader();
+    this.createRGBShiftShader();
     this.createGlitchShader();
-    // this.createBadTvShader();
-    // this.createBlurShader();
+    this.createBlurShader();
     this.createCopyShader();
 
     this.createControls();
@@ -127,8 +126,8 @@ export default class VideoGlitch {
       },
 
       distortion: {
-        amount: 2.5,
-        speed: 0.1
+        amount: 0.0,
+        speed: 0.0
       },
 
       /* badTv: {
@@ -145,8 +144,8 @@ export default class VideoGlitch {
       },
 
       rgbShift: {
-        amount: 0.0, // 0.0 ~ 0.1
-        angle: 0.0 // (0.0 ~ 2.0) * Math.PI
+        amount: 0.0,
+        angle: 0.0
       }
     };
   }
@@ -241,15 +240,37 @@ export default class VideoGlitch {
   }
 
   createControls() {
+    const rgbShift = this.gui.addFolder('RGB Shift');
     const slide = this.gui.addFolder('Slide');
+
     const settings = {
+      color: '#000000',
+
       slide: () => {
         console.log('Slide');
       }
     };
 
+    rgbShift.add(this.effects.rgbShift, 'amount', 0.0, 1.0).step(0.001).name('Amount');
+    rgbShift.add(this.effects.rgbShift, 'angle', 0.0, 2.0).step(0.01).name('Angle').onChange(() => {
+      this.effects.rgbShift.angle *= Math.PI;
+    });
+
     slide.add(this.effects, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
     slide.add(this.effects, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
+
+    this.gui.addColor(settings, 'color').name('Filter Color').onChange((value) => {
+      const color = parseInt(`0x${value.slice(1, 7)}`, 16);
+
+      this.effects.glitch.filterColor = new THREE.Color(color);
+    });
+
+    this.gui.add(this.effects, 'blur', 0.0, 2048.0).name('Blur');
+    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha');
+
+    this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
+      this.glitchUniforms.size.value = size;
+    });
 
     this.gui.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
       this.glitchUniforms.show.value = fixed ? 1 : 0;
@@ -275,17 +296,14 @@ export default class VideoGlitch {
     this.updateSlideValues(this.effects.fixed, this.effects.show);
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-      // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
-      // this.verticalBlur.material.uniforms.v.value = this.effects.blur;
+      this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
+      this.verticalBlur.material.uniforms.v.value = this.effects.blur;
 
-      // this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
-      // this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
+      this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
+      this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
 
+      this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
       this.copy.material.uniforms.opacity.value = this.effects.alpha;
-
-      // this.glitch.material.uniforms.filterColor.value.r = 0.0;
-      // this.glitch.material.uniforms.filterColor.value.g = 0.0;
-      // this.glitch.material.uniforms.filterColor.value.b = 0.0;
 
       this.videoTexture.needsUpdate = true;
       this.composer.render();
