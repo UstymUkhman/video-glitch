@@ -5,8 +5,8 @@ require('three/examples/js/postprocessing/RenderPass');
 require('three/examples/js/postprocessing/ShaderPass');
 require('three/examples/js/postprocessing/MaskPass');
 
-require('three/examples/js/shaders/HorizontalBlurShader');
-require('three/examples/js/shaders/VerticalBlurShader');
+// require('three/examples/js/shaders/HorizontalBlurShader');
+// require('three/examples/js/shaders/VerticalBlurShader');
 require('three/examples/js/shaders/RGBShiftShader');
 require('three/examples/js/shaders/CopyShader');
 
@@ -70,8 +70,8 @@ export default class VideoGlitch {
 
     this.createRGBShiftShader();
     this.createGlitchShader();
-    this.createBlurShader();
     this.createCopyShader();
+    this.createBlurShader();
 
     this.createControls();
     this.createStats();
@@ -219,16 +219,41 @@ export default class VideoGlitch {
   } */
 
   createBlurShader() {
-    THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
-    THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur;
+    // THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
+    // THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur;
 
-    this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
-    this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
+    // this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
+    // this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
 
-    this.composer.addPass(this.horizontalBlur);
-    this.composer.addPass(this.verticalBlur);
+    // this.composer.addPass(this.horizontalBlur);
+    // this.composer.addPass(this.verticalBlur);
 
-    this.verticalBlur.renderToScreen = true;
+    // this.verticalBlur.renderToScreen = true;
+
+    this.blurUniforms = {
+      distortion: { type: 'f', value: 1.0 / 512.0 },
+      tDiffuse: { type: 't', value: null }
+    };
+
+    this.horizontalBlurShader = new THREE.ShaderMaterial({
+      fragmentShader: require('./shaders/horizontalBlur.frag'),
+      vertexShader: require('./shaders/blur.vert'),
+      uniforms: this.blurUniforms
+    });
+
+    this.verticalBlurShader = new THREE.ShaderMaterial({
+      fragmentShader: require('./shaders/verticalBlur.frag'),
+      vertexShader: require('./shaders/blur.vert'),
+      uniforms: this.blurUniforms
+    });
+
+    const horizontalBlur = new THREE.ShaderPass(this.horizontalBlurShader);
+    const verticalBlur = new THREE.ShaderPass(this.verticalBlurShader);
+
+    this.composer.addPass(horizontalBlur);
+    this.composer.addPass(verticalBlur);
+
+    verticalBlur.renderToScreen = true;
   }
 
   createCopyShader() {
@@ -296,8 +321,8 @@ export default class VideoGlitch {
     this.updateSlideValues(this.effects.fixed, this.effects.show);
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-      this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
-      this.verticalBlur.material.uniforms.v.value = this.effects.blur;
+      // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
+      // this.verticalBlur.material.uniforms.v.value = this.effects.blur;
 
       this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
       this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
