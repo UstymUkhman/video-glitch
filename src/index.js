@@ -69,13 +69,12 @@ export default class VideoGlitch {
     this.createGlitchParams();
 
     // this.createRGBShiftShader();
-    // this.createOverlayShader();
     this.createGlitchShader();
     // this.createBadTvShader();
     // this.createBlurShader();
     this.createCopyShader();
-    this.createControls();
 
+    this.createControls();
     this.createStats();
     this.video.play();
     this.render();
@@ -121,18 +120,23 @@ export default class VideoGlitch {
       time: 0.0,
       size: 1.0,
 
-      badTv: {
-        distortion2: 1.5,
-        distortion: 1.5,
-        rollSpeed: 0.0,
-        speed: 0.1
-      },
-
       overlay: {
         sIntensity: 2.0,
         nIntensity: 0.5,
         sCount: 320
       },
+
+      distortion: {
+        amount: 2.5,
+        speed: 0.1
+      },
+
+      /* badTv: {
+        distortion2: 1.5,
+        distortion: 1.5,
+        rollSpeed: 0.0,
+        speed: 0.1
+      }, */
 
       glitch: {
         filterColor: new THREE.Color(0.0),
@@ -155,41 +159,29 @@ export default class VideoGlitch {
     this.composer.addPass(this.rgbShift);
   }
 
-  createOverlayShader() {
-    this.overlayUniforms = {
-      sIntensity: { type: 'f', value: this.effects.overlay.sIntensity },
-      nIntensity: { type: 'f', value: this.effects.overlay.nIntensity },
-      sCount: { type: 'f', value: this.effects.overlay.sCount },
-      time: { type: 'f', value: this.effects.time },
-      tDiffuse: { type: 't', value: null }
-    };
-
-    const overlay = new THREE.ShaderPass(
-      new THREE.ShaderMaterial({
-        fragmentShader: require('./shaders/overlay.frag'),
-        vertexShader: require('./shaders/overlay.vert'),
-        uniforms: this.overlayUniforms
-      })
-    );
-
-    this.composer.addPass(overlay);
-  }
-
   createGlitchShader() {
     this.glitchUniforms = {
+      // General Effects:
       filterColor: { type: 'c', value: this.effects.glitch.filterColor },
       amount: { type: 'f', value: this.effects.glitch.amount },
       snow: { type: 'f', value: this.effects.glitch.snow },
       alpha: { type: 'f', value: this.effects.alpha },
       size: { type: 'f', value: this.effects.size },
 
+      // Lines Overlay Effects:
       sIntensity: { type: 'f', value: this.effects.overlay.sIntensity },
       nIntensity: { type: 'f', value: this.effects.overlay.nIntensity },
       sCount: { type: 'f', value: this.effects.overlay.sCount },
 
+      // Distortion Effects:
+      distortion: { type: 'f', value: this.effects.distortion.amount },
+      speed: { type: 'f', value: this.effects.distortion.speed },
+
+      // Slide Effects:
       xSlide: { type: 'f', value: this.effects.xSlide },
       ySlide: { type: 'f', value: this.effects.ySlide },
 
+      // Sync & Controls:
       time: { type: 'f', value: this.effects.time },
       tDiffuse: { type: 't', value: null },
       show: { type: 'i', value: 0 }
@@ -206,7 +198,7 @@ export default class VideoGlitch {
     this.composer.addPass(this.glitch);
   }
 
-  createBadTvShader() {
+  /* createBadTvShader() {
     this.badTvUniforms = {
       distortion2: { type: 'f', value: this.effects.badTv.distortion2 },
       distortion: { type: 'f', value: this.effects.badTv.distortion },
@@ -225,7 +217,7 @@ export default class VideoGlitch {
     );
 
     this.composer.addPass(badTvPass);
-  }
+  } */
 
   createBlurShader() {
     THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
@@ -264,12 +256,6 @@ export default class VideoGlitch {
     });
 
     this.gui.add(settings, 'slide').name('Slide');
-
-    // this.gui.add(settings, 'fixedEffects').name('Fixed Effects').onChange((fixed) => {
-
-    //   if (!fixed) {
-    //   }
-    // });
   }
 
   createStats() {
@@ -285,14 +271,8 @@ export default class VideoGlitch {
     this.effects.time += 0.1;
     // this.badTvUniforms.time.value = this.effects.time;
     this.glitchUniforms.time.value = this.effects.time;
-    // this.overlayUniforms.time.value = this.effects.time;
 
-    if (this.effects.fixed) {
-      this.glitchUniforms.xSlide.value = this.effects.xSlide;
-      this.glitchUniforms.ySlide.value = this.effects.ySlide;
-    } else if (this.effects.show && !this.effects.fixed) {
-      this.updateSlideValues();
-    }
+    this.updateSlideValues(this.effects.fixed, this.effects.show);
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
@@ -301,7 +281,7 @@ export default class VideoGlitch {
       // this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
       // this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
 
-      // this.copy.material.uniforms.opacity.value = this.effects.alpha;
+      this.copy.material.uniforms.opacity.value = this.effects.alpha;
 
       // this.glitch.material.uniforms.filterColor.value.r = 0.0;
       // this.glitch.material.uniforms.filterColor.value.g = 0.0;
@@ -315,13 +295,21 @@ export default class VideoGlitch {
     this.frameId = requestAnimationFrame(this.render.bind(this));
   }
 
-  updateSlideValues() {
-    if (this.glitchUniforms.xSlide.value < this.effects.xSlide) {
-      this.glitchUniforms.xSlide.value += 0.01;
+  updateSlideValues(fixed, show) {
+    if (fixed) {
+      this.glitchUniforms.xSlide.value = this.effects.xSlide;
+      this.glitchUniforms.ySlide.value = this.effects.ySlide;
+      return;
     }
 
-    if (this.glitchUniforms.ySlide.value < this.effects.ySlide) {
-      this.glitchUniforms.ySlide.value += 0.01;
+    if (show) {
+      if (this.glitchUniforms.xSlide.value < this.effects.xSlide) {
+        this.glitchUniforms.xSlide.value += 0.01;
+      }
+
+      if (this.glitchUniforms.ySlide.value < this.effects.ySlide) {
+        this.glitchUniforms.ySlide.value += 0.01;
+      }
     }
   }
 }
