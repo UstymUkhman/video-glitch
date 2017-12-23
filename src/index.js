@@ -220,6 +220,8 @@ export default class VideoGlitch {
   createControls() {
     const distortion = this.gui.addFolder('Distortion');
     const rgbShift = this.gui.addFolder('RGB Shift');
+    const overlay = this.gui.addFolder('Overlay');
+    const noise = this.gui.addFolder('Noise');
     const slide = this.gui.addFolder('Slide');
 
     const settings = {
@@ -240,14 +242,25 @@ export default class VideoGlitch {
       this.effects.rgbShift.angle = angle * Math.PI;
     });
 
-    slide.add(this.effects, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
-    slide.add(this.effects, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
+    overlay.add(settings, 'lines').name('Lines Overlay').onChange((lines) => {
+      this.glitchUniforms.lines.value = lines ? 1 : 0;
+    });
 
-    this.gui.addColor(settings, 'color').name('Filter Color').onChange((value) => {
+    overlay.addColor(settings, 'color').name('Filter Color').onChange((value) => {
       const color = parseInt(`0x${value.slice(1, 7)}`, 16);
 
       this.effects.glitch.filterColor = new THREE.Color(color);
     });
+
+    overlay.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
+      this.glitchUniforms.show.value = fixed ? 1 : 0;
+    });
+
+    noise.add(this.effects.glitch, 'snow', 0.0, 1.0).step(0.01).name('Snow');
+    noise.add(this.effects.glitch, 'amount', 0.0, 1.0).step(0.01).name('Amount');
+
+    slide.add(this.effects, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
+    slide.add(this.effects, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
 
     this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur');
     this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
@@ -256,14 +269,6 @@ export default class VideoGlitch {
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
-    });
-
-    this.gui.add(settings, 'lines').name('Lines Overlay').onChange((lines) => {
-      this.glitchUniforms.lines.value = lines ? 1 : 0;
-    });
-
-    this.gui.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
-      this.glitchUniforms.show.value = fixed ? 1 : 0;
     });
 
     this.gui.add(settings, 'slide').name('Slide');
@@ -296,7 +301,6 @@ export default class VideoGlitch {
 
   updateSlideValues(fixed, show) {
     if (fixed || show) {
-
       this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
       this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
       this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
@@ -306,6 +310,9 @@ export default class VideoGlitch {
 
       this.glitchUniforms.distortion.value = this.effects.distortion.amount;
       this.glitchUniforms.speed.value = this.effects.distortion.speed;
+
+      this.glitchUniforms.amount.value = this.effects.glitch.amount;
+      this.glitchUniforms.snow.value = this.effects.glitch.snow;
     }
 
     if (fixed) {

@@ -115,7 +115,7 @@ void main (void) {
     float ys = floor(gl_FragCoord.y / snow);
 
     vec2 noise = vec2(xs * time, ys * time);
-    color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount / 10.0);
+    color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount / 2.0);
 
     if (shift > 0.0) {
       vec2 offset = shift * vec2(cos(angle), sin(angle));
