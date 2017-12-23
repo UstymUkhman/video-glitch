@@ -4,9 +4,7 @@ precision highp float;
 uniform sampler2D tDiffuse;
 
 // Overlay Uniforms:
-uniform float nIntensity;
-uniform float sIntensity;
-uniform float sCount;
+uniform int lines;
 
 // Distortion Uniforms:
 uniform float distortion;
@@ -67,23 +65,25 @@ float snoise (vec2 v) {
 
 void main (void) {
   vec4 color = texture2D(tDiffuse, vUv);
+  vec3 result = color.rgb;
   vec2 point = vUv;
-  vec3 result;
 
-  // float yt = point.y; // - time * speed;
   float yt = point.y - time * speed;
   float offset = 0.0;
 
-  if (distortion > 0.0) {
-    offset += snoise(vec2(yt * 50.0, 0.0)) * distortion * 0.001;
-    color = texture2D(tDiffuse, vec2(fract(point.x + offset), fract(point.y)));
-  }
-
   if (show == 1) {
-    float line = sin(vUv.y * sCount) * 0.2;
+    if (lines == 1) {
+      float line = sin(vUv.y * 325.0) * 0.2;
 
-    result = color.rgb * vec3(line) * sIntensity;
-    result = color.rgb + clamp(nIntensity, 0.0, 1.0) * (result - color.rgb);
+      result = color.rgb * vec3(line) * 2.0;
+      result = color.rgb + clamp(0.5, 0.0, 1.0) * (result - color.rgb);
+    }
+
+    if (distortion > 0.0) {
+      offset += snoise(vec2(yt * 50.0, 0.0)) * distortion * 0.001;
+      vec4 dist = texture2D(tDiffuse, vec2(fract(point.x + offset), fract(point.y)));
+      result = mix(dist.rgb, result, 0.5);
+    }
 
     result.r += result.r * filterColor.r;
     result.g += result.g * filterColor.g;

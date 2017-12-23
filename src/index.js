@@ -5,8 +5,8 @@ require('three/examples/js/postprocessing/RenderPass');
 require('three/examples/js/postprocessing/ShaderPass');
 require('three/examples/js/postprocessing/MaskPass');
 
-// require('three/examples/js/shaders/HorizontalBlurShader');
-// require('three/examples/js/shaders/VerticalBlurShader');
+require('three/examples/js/shaders/HorizontalBlurShader');
+require('three/examples/js/shaders/VerticalBlurShader');
 require('three/examples/js/shaders/RGBShiftShader');
 require('three/examples/js/shaders/CopyShader');
 
@@ -71,7 +71,7 @@ export default class VideoGlitch {
     this.createRGBShiftShader();
     this.createGlitchShader();
     this.createCopyShader();
-    this.createBlurShader();
+    // this.createBlurShader();
 
     this.createControls();
     this.createStats();
@@ -109,21 +109,16 @@ export default class VideoGlitch {
 
   createGlitchParams() {
     this.effects = {
-      fixed: false,
+      fixed: true,
 
       xSlide: 0.0,
       ySlide: 0.0,
 
+      lines: 0.0,
       alpha: 1.0,
-      blur: 0.0, // (0.0 ~ 2.048) / 512.0
+      blur: 0.0,
       time: 0.0,
       size: 1.0,
-
-      overlay: {
-        sIntensity: 2.0,
-        nIntensity: 0.5,
-        sCount: 320
-      },
 
       distortion: {
         amount: 0.0,
@@ -167,11 +162,6 @@ export default class VideoGlitch {
       alpha: { type: 'f', value: this.effects.alpha },
       size: { type: 'f', value: this.effects.size },
 
-      // Lines Overlay Effects:
-      sIntensity: { type: 'f', value: this.effects.overlay.sIntensity },
-      nIntensity: { type: 'f', value: this.effects.overlay.nIntensity },
-      sCount: { type: 'f', value: this.effects.overlay.sCount },
-
       // Distortion Effects:
       distortion: { type: 'f', value: this.effects.distortion.amount },
       speed: { type: 'f', value: this.effects.distortion.speed },
@@ -180,10 +170,13 @@ export default class VideoGlitch {
       xSlide: { type: 'f', value: this.effects.xSlide },
       ySlide: { type: 'f', value: this.effects.ySlide },
 
+      // Lines Overlay Effects:
+      lines: { type: 'i', value: this.effects.lines },
+
       // Sync & Controls:
       time: { type: 'f', value: this.effects.time },
       tDiffuse: { type: 't', value: null },
-      show: { type: 'i', value: 0 }
+      show: { type: 'i', value: 1 }
     };
 
     this.glitch = new THREE.ShaderPass(
@@ -219,41 +212,16 @@ export default class VideoGlitch {
   } */
 
   createBlurShader() {
-    // THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur;
-    // THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur;
+    THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur / 512.0;
+    THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur / 512.0;
 
-    // this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
-    // this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
+    this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
+    this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
 
-    // this.composer.addPass(this.horizontalBlur);
-    // this.composer.addPass(this.verticalBlur);
+    this.composer.addPass(this.horizontalBlur);
+    this.composer.addPass(this.verticalBlur);
 
-    // this.verticalBlur.renderToScreen = true;
-
-    this.blurUniforms = {
-      distortion: { type: 'f', value: 1.0 / 512.0 },
-      tDiffuse: { type: 't', value: null }
-    };
-
-    this.horizontalBlurShader = new THREE.ShaderMaterial({
-      fragmentShader: require('./shaders/horizontalBlur.frag'),
-      vertexShader: require('./shaders/blur.vert'),
-      uniforms: this.blurUniforms
-    });
-
-    this.verticalBlurShader = new THREE.ShaderMaterial({
-      fragmentShader: require('./shaders/verticalBlur.frag'),
-      vertexShader: require('./shaders/blur.vert'),
-      uniforms: this.blurUniforms
-    });
-
-    const horizontalBlur = new THREE.ShaderPass(this.horizontalBlurShader);
-    const verticalBlur = new THREE.ShaderPass(this.verticalBlurShader);
-
-    this.composer.addPass(horizontalBlur);
-    this.composer.addPass(verticalBlur);
-
-    verticalBlur.renderToScreen = true;
+    this.verticalBlur.renderToScreen = true;
   }
 
   createCopyShader() {
@@ -265,20 +233,26 @@ export default class VideoGlitch {
   }
 
   createControls() {
+    const distortion = this.gui.addFolder('Distortion');
     const rgbShift = this.gui.addFolder('RGB Shift');
     const slide = this.gui.addFolder('Slide');
 
     const settings = {
       color: '#000000',
+      lines: false,
+      angle: 0.0,
 
       slide: () => {
         console.log('Slide');
       }
     };
 
+    distortion.add(this.effects.distortion, 'amount', 0.0, 10.0).step(0.1).name('Amount');
+    distortion.add(this.effects.distortion, 'speed', 0.0, 1.0).step(0.01).name('Speed');
+
     rgbShift.add(this.effects.rgbShift, 'amount', 0.0, 1.0).step(0.001).name('Amount');
-    rgbShift.add(this.effects.rgbShift, 'angle', 0.0, 2.0).step(0.01).name('Angle').onChange(() => {
-      this.effects.rgbShift.angle *= Math.PI;
+    rgbShift.add(settings, 'angle', 0.0, 2.0).step(0.01).name('Angle').onChange((angle) => {
+      this.effects.rgbShift.angle = angle * Math.PI;
     });
 
     slide.add(this.effects, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
@@ -290,14 +264,21 @@ export default class VideoGlitch {
       this.effects.glitch.filterColor = new THREE.Color(color);
     });
 
-    this.gui.add(this.effects, 'blur', 0.0, 2048.0).name('Blur');
+    this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur');
     this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha');
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
     });
 
+    this.gui.add(settings, 'lines').name('Lines Overlay').onChange((lines) => {
+      this.glitchUniforms.lines.value = lines ? 1 : 0;
+    });
+
     this.gui.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
+      this.rgbShift.material.uniforms.amount.value = fixed ? this.effects.rgbShift.amount : 0.0;
+      this.rgbShift.material.uniforms.angle.value = fixed ? this.effects.rgbShift.angle : 0.0;
+
       this.glitchUniforms.show.value = fixed ? 1 : 0;
     });
 
@@ -321,14 +302,8 @@ export default class VideoGlitch {
     this.updateSlideValues(this.effects.fixed, this.effects.show);
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-      // this.horizontalBlur.material.uniforms.h.value = this.effects.blur;
-      // this.verticalBlur.material.uniforms.v.value = this.effects.blur;
-
-      this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
-      this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
-
-      this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
-      this.copy.material.uniforms.opacity.value = this.effects.alpha;
+      // this.horizontalBlur.material.uniforms.h.value = this.effects.blur / 512.0;
+      // this.verticalBlur.material.uniforms.v.value = this.effects.blur / 512.0;
 
       this.videoTexture.needsUpdate = true;
       this.composer.render();
@@ -339,6 +314,17 @@ export default class VideoGlitch {
   }
 
   updateSlideValues(fixed, show) {
+    if (fixed || show) {
+      this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
+      this.copy.material.uniforms.opacity.value = this.effects.alpha;
+
+      this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
+      this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
+
+      this.glitchUniforms.distortion.value = this.effects.distortion.amount;
+      this.glitchUniforms.speed.value = this.effects.distortion.speed;
+    }
+
     if (fixed) {
       this.glitchUniforms.xSlide.value = this.effects.xSlide;
       this.glitchUniforms.ySlide.value = this.effects.ySlide;
