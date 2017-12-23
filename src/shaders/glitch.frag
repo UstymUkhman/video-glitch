@@ -95,7 +95,7 @@ void main (void) {
     if (lines == 1) {
       float line = sin(vUv.y * 325.0) * 0.2;
 
-      result = color.rgb * vec3(line) * 2.0;
+      result = color.rgb * vec3(line) * 5.0;
       result = color.rgb + clamp(0.5, 0.0, 1.0) * (result - color.rgb);
     }
 
