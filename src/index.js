@@ -5,9 +5,7 @@ require('three/examples/js/postprocessing/RenderPass');
 require('three/examples/js/postprocessing/ShaderPass');
 require('three/examples/js/postprocessing/MaskPass');
 
-require('three/examples/js/shaders/HorizontalBlurShader');
 require('three/examples/js/shaders/VerticalBlurShader');
-require('three/examples/js/shaders/RGBShiftShader');
 require('three/examples/js/shaders/CopyShader');
 
 import dat from 'three/examples/js/libs/dat.gui.min';
@@ -68,10 +66,9 @@ export default class VideoGlitch {
     this.createVideoGeometry();
     this.createGlitchParams();
 
-    this.createRGBShiftShader();
-    this.createGlitchShader();
+    this.createBlurShader();
     this.createCopyShader();
-    // this.createBlurShader();
+    this.createGlitchShader();
 
     this.createControls();
     this.createStats();
@@ -145,33 +142,29 @@ export default class VideoGlitch {
     };
   }
 
-  createRGBShiftShader() {
-    THREE.RGBShiftShader.uniforms.amount.value = this.effects.rgbShift.amount;
-    THREE.RGBShiftShader.uniforms.angle.value = this.effects.rgbShift.angle;
-
-    this.rgbShift = new THREE.ShaderPass(THREE.RGBShiftShader);
-    this.composer.addPass(this.rgbShift);
-  }
-
   createGlitchShader() {
     this.glitchUniforms = {
       // General Effects:
       filterColor: { type: 'c', value: this.effects.glitch.filterColor },
       amount: { type: 'f', value: this.effects.glitch.amount },
       snow: { type: 'f', value: this.effects.glitch.snow },
-      alpha: { type: 'f', value: this.effects.alpha },
       size: { type: 'f', value: this.effects.size },
 
       // Distortion Effects:
       distortion: { type: 'f', value: this.effects.distortion.amount },
       speed: { type: 'f', value: this.effects.distortion.speed },
 
+      // RGB Shift Effects:
+      shift: { type: 'f', value: this.effects.rgbShift.amount },
+      angle: { type: 'f', value: this.effects.rgbShift.angle },
+
+      // Blur & Lines Overlay Effects:
+      blur: { type: 'f', value: this.effects.blur / 512.0 },
+      lines: { type: 'i', value: this.effects.lines },
+
       // Slide Effects:
       xSlide: { type: 'f', value: this.effects.xSlide },
       ySlide: { type: 'f', value: this.effects.ySlide },
-
-      // Lines Overlay Effects:
-      lines: { type: 'i', value: this.effects.lines },
 
       // Sync & Controls:
       time: { type: 'f', value: this.effects.time },
@@ -188,6 +181,7 @@ export default class VideoGlitch {
     );
 
     this.composer.addPass(this.glitch);
+    this.glitch.renderToScreen = true;
   }
 
   /* createBadTvShader() {
@@ -212,22 +206,13 @@ export default class VideoGlitch {
   } */
 
   createBlurShader() {
-    THREE.HorizontalBlurShader.uniforms.h.value = this.effects.blur / 512.0;
     THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur / 512.0;
-
-    this.horizontalBlur = new THREE.ShaderPass(THREE.HorizontalBlurShader);
     this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
-
-    this.composer.addPass(this.horizontalBlur);
     this.composer.addPass(this.verticalBlur);
-
-    this.verticalBlur.renderToScreen = true;
   }
 
   createCopyShader() {
-    THREE.CopyShader.uniforms.opacity.value = this.effects.alpha;
     this.copy = new THREE.ShaderPass(THREE.CopyShader);
-
     this.composer.addPass(this.copy);
     this.copy.renderToScreen = true;
   }
@@ -265,7 +250,9 @@ export default class VideoGlitch {
     });
 
     this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur');
-    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha');
+    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
+      this.renderer.domElement.style.opacity = opacity;
+    });
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
@@ -276,9 +263,6 @@ export default class VideoGlitch {
     });
 
     this.gui.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
-      this.rgbShift.material.uniforms.amount.value = fixed ? this.effects.rgbShift.amount : 0.0;
-      this.rgbShift.material.uniforms.angle.value = fixed ? this.effects.rgbShift.angle : 0.0;
-
       this.glitchUniforms.show.value = fixed ? 1 : 0;
     });
 
@@ -302,9 +286,6 @@ export default class VideoGlitch {
     this.updateSlideValues(this.effects.fixed, this.effects.show);
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-      // this.horizontalBlur.material.uniforms.h.value = this.effects.blur / 512.0;
-      // this.verticalBlur.material.uniforms.v.value = this.effects.blur / 512.0;
-
       this.videoTexture.needsUpdate = true;
       this.composer.render();
       this.stats.update();
@@ -315,11 +296,13 @@ export default class VideoGlitch {
 
   updateSlideValues(fixed, show) {
     if (fixed || show) {
-      this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
-      this.copy.material.uniforms.opacity.value = this.effects.alpha;
 
-      this.rgbShift.material.uniforms.amount.value = this.effects.rgbShift.amount;
-      this.rgbShift.material.uniforms.angle.value = this.effects.rgbShift.angle;
+      this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
+      this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
+      this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
+
+      this.verticalBlur.material.uniforms.v.value = this.effects.blur / 512.0;
+      this.glitch.material.uniforms.blur.value = this.effects.blur / 512.0;
 
       this.glitchUniforms.distortion.value = this.effects.distortion.amount;
       this.glitchUniforms.speed.value = this.effects.distortion.speed;
