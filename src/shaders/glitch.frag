@@ -44,7 +44,7 @@ float snoise (vec2 v) {
 
   vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   vec4 x12 = x0.xyxy + C.xxzz;
- 
+
   x12.xy -= i1;
   i = mod289(i);
 
@@ -111,11 +111,15 @@ void main (void) {
     result.g += result.g * filterColor.g;
     result.b += result.b * filterColor.b;
 
-    float xs = floor(gl_FragCoord.x / snow);
-    float ys = floor(gl_FragCoord.y / snow);
+    color = vec4(result, 1.0);
 
-    vec2 noise = vec2(xs * time, ys * time);
-    color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount / 2.0);
+    if (snow > 0.0) {
+      float xs = floor(gl_FragCoord.x / snow);
+      float ys = floor(gl_FragCoord.y / snow);
+
+      vec2 noise = vec2(xs * time, ys * time);
+      color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount / 2.0);
+    }
 
     if (shift > 0.0) {
       vec2 offset = shift * vec2(cos(angle), sin(angle));

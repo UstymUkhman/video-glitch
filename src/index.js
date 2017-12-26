@@ -20,6 +20,16 @@ export default class VideoGlitch {
     this.stats = null;
     this.container = null;
 
+    this.slideEnd = null
+    this.slideStart = null;
+
+    this.slideFade = 0.0;
+    this.isSliding = false;
+    this.slideDuration = 0.0;
+
+    this.slideStepX = 0.0;
+    this.slideStepY = 0.0;
+
     this.gui = new dat.GUI();
     this.ratio = this.width / this.height;
   }
@@ -106,10 +116,8 @@ export default class VideoGlitch {
 
   createGlitchParams() {
     this.effects = {
+      onSlide: false,
       fixed: true,
-
-      xSlide: 0.0,
-      ySlide: 0.0,
 
       lines: 0.0,
       alpha: 1.0,
@@ -138,6 +146,14 @@ export default class VideoGlitch {
       rgbShift: {
         amount: 0.0,
         angle: 0.0
+      },
+
+      slide: {
+        fade: 1.0,
+        xSlide: 0.0,
+        ySlide: 0.0,
+        duration: 5.0,
+        slideBack: false
       }
     };
   }
@@ -163,8 +179,8 @@ export default class VideoGlitch {
       lines: { type: 'i', value: this.effects.lines },
 
       // Slide Effects:
-      xSlide: { type: 'f', value: this.effects.xSlide },
-      ySlide: { type: 'f', value: this.effects.ySlide },
+      xSlide: { type: 'f', value: this.effects.slide.xSlide },
+      ySlide: { type: 'f', value: this.effects.slide.ySlide },
 
       // Sync & Controls:
       time: { type: 'f', value: this.effects.time },
@@ -230,7 +246,11 @@ export default class VideoGlitch {
       angle: 0.0,
 
       slide: () => {
-        console.log('Slide');
+        this.slideDuration = this.effects.slide.duration * 1000.0;
+        this.slideStart = Date.now();
+
+        this.slideEnd = this.slideStart + this.slideDuration;
+        this.isSliding = true;
       }
     };
 
@@ -252,23 +272,38 @@ export default class VideoGlitch {
       this.effects.glitch.filterColor = new THREE.Color(color);
     });
 
-    overlay.add(this.effects, 'fixed').name('Fixed Effects').onChange((fixed) => {
-      this.glitchUniforms.show.value = fixed ? 1 : 0;
-    });
-
     noise.add(this.effects.glitch, 'snow', 0.0, 1.0).step(0.01).name('Snow');
     noise.add(this.effects.glitch, 'amount', 0.0, 1.0).step(0.01).name('Amount');
 
-    slide.add(this.effects, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
-    slide.add(this.effects, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
+    slide.add(this.effects.slide, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
+    slide.add(this.effects.slide, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
 
-    this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur');
+    slide.add(this.effects.slide, 'duration', 0.0, 10.0).step(0.01).name('Duration');
+    slide.add(this.effects.slide, 'fade', 0.0, 10.0).step(0.1).name('Fade Out In');
+    slide.add(this.effects.slide, 'slideBack').name('Slide Back');
+
+    this.gui.add(this.effects, 'blur', 0.0, 3.0).step(0.01).name('Blur');
     this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
       this.renderer.domElement.style.opacity = opacity;
     });
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
+    });
+
+    this.gui.add(this.effects, 'onSlide').name('Show On Slide').listen().onChange((onSlide) => {
+      if (this.effects.fixed) {
+        this.glitchUniforms.show.value = 0;
+        this.effects.fixed = false;
+      }
+    });
+
+    this.gui.add(this.effects, 'fixed').name('Fixed Effects').listen().onChange((fixed) => {
+      this.glitchUniforms.show.value = fixed ? 1 : 0;
+
+      if (this.effects.onSlide) {
+        this.effects.onSlide = false;
+      }
     });
 
     this.gui.add(settings, 'slide').name('Slide');
@@ -288,7 +323,7 @@ export default class VideoGlitch {
     // this.badTvUniforms.time.value = this.effects.time;
     this.glitchUniforms.time.value = this.effects.time;
 
-    this.updateSlideValues(this.effects.fixed, this.effects.show);
+    this.updateSlideValues();
 
     if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
       this.videoTexture.needsUpdate = true;
@@ -299,8 +334,8 @@ export default class VideoGlitch {
     this.frameId = requestAnimationFrame(this.render.bind(this));
   }
 
-  updateSlideValues(fixed, show) {
-    if (fixed || show) {
+  updateSlideValues() {
+    if (this.effects.fixed || this.effects.onSlide) {
       this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
       this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
       this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
@@ -315,20 +350,23 @@ export default class VideoGlitch {
       this.glitchUniforms.snow.value = this.effects.glitch.snow;
     }
 
-    if (fixed) {
-      this.glitchUniforms.xSlide.value = this.effects.xSlide;
-      this.glitchUniforms.ySlide.value = this.effects.ySlide;
-      return;
-    }
+    // if (this.effects.fixed) {
+    //   this.glitchUniforms.xSlide.value = this.effects.slide.xSlide;
+    //   this.glitchUniforms.ySlide.value = this.effects.slide.ySlide;
+    //   return;
+    // }
 
-    if (show) {
-      if (this.glitchUniforms.xSlide.value < this.effects.xSlide) {
-        this.glitchUniforms.xSlide.value += 0.01;
+    if (this.isSliding) {
+      const delta = this.slideEnd - Date.now();
+      const prog = 1 - delta / this.slideDuration;
+
+      if (prog >= 1) {
+        this.isSliding = false;
+        return;
       }
 
-      if (this.glitchUniforms.ySlide.value < this.effects.ySlide) {
-        this.glitchUniforms.ySlide.value += 0.01;
-      }
+      this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
+      this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
     }
   }
 }
