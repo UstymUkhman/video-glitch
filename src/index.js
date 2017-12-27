@@ -55,27 +55,34 @@ export default class VideoGlitch {
     this.video.oncanplay = this.init.bind(this);
   }
 
-  init() {
+  init(event) {
+    const fullscreen = typeof event !== 'object';
+
     if (!Detector.webgl) {
       document.body.appendChild(Detector.getWebGLErrorMessage());
       return;
     }
 
-    if (this.renderer) {
+    if (this.renderer && !fullscreen) {
       return;
     }
 
     this.video.width = this.width;
     this.video.height = this.height;
 
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true
-    });
+    if (!fullscreen) {
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true
+      });
+    }
 
     this.createWebGLEnvironment();
     this.createVideoGeometry();
-    this.createGlitchParams();
+
+    if (!fullscreen) {
+      this.createGlitchParams();
+    }
 
     this.createBlurShader();
     this.createCopyShader();
@@ -90,7 +97,7 @@ export default class VideoGlitch {
   createWebGLEnvironment() {
     this.scene = new THREE.Scene();
 
-    this.camera = new THREE.PerspectiveCamera(45, this.ratio, 1, 1000);
+    this.camera = new THREE.PerspectiveCamera(45, this.ratio, 1, 10000);
     this.camera.position.z = Math.round(this.height / 0.8275862);
     this.camera.updateProjectionMatrix();
 
@@ -258,6 +265,19 @@ export default class VideoGlitch {
 
         this.opacity = this.renderer.domElement.style.opacity;
         this.isSliding = true;
+      },
+
+      fullscreen: () => {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.ratio = this.width / this.height;
+
+        this.gui.domElement.remove();
+        this.gui = new dat.GUI();
+
+        document.body.webkitRequestFullscreen();
+        cancelAnimationFrame(this.frame);
+        this.init(true);
       }
     };
 
@@ -293,6 +313,7 @@ export default class VideoGlitch {
     this.gui.add(this.effects, 'blur', 0.0, 3.0).step(0.01).name('Blur');
     this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
       this.renderer.domElement.style.opacity = opacity;
+      this.opacity = opacity;
     });
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
@@ -314,8 +335,10 @@ export default class VideoGlitch {
       }
     });
 
+    // this.gui.add(settings, 'fullscreen').name('Go FullScreen');
     this.gui.add(settings, 'slide').name('Slide');
     this.renderer.domElement.style.opacity = 1;
+    this.opacity = 1;
   }
 
   createStats() {
@@ -340,7 +363,7 @@ export default class VideoGlitch {
       this.stats.update();
     }
 
-    this.frameId = requestAnimationFrame(this.render.bind(this));
+    this.frame = requestAnimationFrame(this.render.bind(this));
   }
 
   updateSlideValues() {
@@ -380,7 +403,10 @@ export default class VideoGlitch {
 
     if ((now >= this.fadeDelay) && (now < this.fadeEnd)) {
       const alpha = (this.fadeEnd - now) / this.fadeDuration * this.opacity;
+
       this.renderer.domElement.style.opacity = alpha.toFixed(2);
+    } else if (!this.isSliding) {
+      this.renderer.domElement.style.opacity = this.opacity;
     }
   }
 }

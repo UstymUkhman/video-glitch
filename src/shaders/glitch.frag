@@ -106,11 +106,7 @@ void main (void) {
     }
 
     result = mix(result, horizontalBlur().rgb, 0.5);
-
-    result.r += result.r * filterColor.r;
-    result.g += result.g * filterColor.g;
-    result.b += result.b * filterColor.b;
-
+    result += result * (filterColor * 2.0);
     color = vec4(result, 1.0);
 
     if (snow > 0.0) {
