@@ -20,10 +20,11 @@ export default class VideoGlitch {
     this.stats = null;
     this.container = null;
 
-    this.slideEnd = null
+    this.slideEnd = null;
     this.slideStart = null;
 
     this.slideFade = 0.0;
+    this.isFading = false;
     this.isSliding = false;
     this.slideDuration = 0.0;
 
@@ -139,8 +140,8 @@ export default class VideoGlitch {
 
       glitch: {
         filterColor: new THREE.Color(0.0),
-        amount: 0.15,
-        snow: 1.0
+        amount: 0.0,
+        snow: 0.0
       },
 
       rgbShift: {
@@ -153,6 +154,7 @@ export default class VideoGlitch {
         xSlide: 0.0,
         ySlide: 0.0,
         duration: 5.0,
+        fadeDelay: 0.0,
         slideBack: false
       }
     };
@@ -246,10 +248,15 @@ export default class VideoGlitch {
       angle: 0.0,
 
       slide: () => {
-        this.slideDuration = this.effects.slide.duration * 1000.0;
         this.slideStart = Date.now();
-
+        this.slideDuration = this.effects.slide.duration * 1000.0;
         this.slideEnd = this.slideStart + this.slideDuration;
+
+        this.fadeDelay = this.slideStart + this.effects.slide.fadeDelay * 1000.0;
+        this.fadeDuration = this.effects.slide.fade * 1000.0;
+        this.fadeEnd = this.fadeDelay + this.fadeDuration;
+
+        this.opacity = this.renderer.domElement.style.opacity;
         this.isSliding = true;
       }
     };
@@ -280,6 +287,7 @@ export default class VideoGlitch {
 
     slide.add(this.effects.slide, 'duration', 0.0, 10.0).step(0.01).name('Duration');
     slide.add(this.effects.slide, 'fade', 0.0, 10.0).step(0.1).name('Fade Out In');
+    slide.add(this.effects.slide, 'fadeDelay', 0.0, 10.0).step(0.1).name('Fade Out After');
     slide.add(this.effects.slide, 'slideBack').name('Slide Back');
 
     this.gui.add(this.effects, 'blur', 0.0, 3.0).step(0.01).name('Blur');
@@ -307,6 +315,7 @@ export default class VideoGlitch {
     });
 
     this.gui.add(settings, 'slide').name('Slide');
+    this.renderer.domElement.style.opacity = 1;
   }
 
   createStats() {
@@ -350,23 +359,28 @@ export default class VideoGlitch {
       this.glitchUniforms.snow.value = this.effects.glitch.snow;
     }
 
-    // if (this.effects.fixed) {
-    //   this.glitchUniforms.xSlide.value = this.effects.slide.xSlide;
-    //   this.glitchUniforms.ySlide.value = this.effects.slide.ySlide;
-    //   return;
-    // }
+    if (this.effects.fixed && !this.isSliding) {
+      this.glitchUniforms.xSlide.value = this.effects.slide.xSlide;
+      this.glitchUniforms.ySlide.value = this.effects.slide.ySlide;
+    }
+
+    const now = Date.now();
 
     if (this.isSliding) {
-      const delta = this.slideEnd - Date.now();
+      const delta = this.slideEnd - now;
       const prog = 1 - delta / this.slideDuration;
 
-      if (prog >= 1) {
+      if (prog < 1) {
+        this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
+        this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
+      } else {
         this.isSliding = false;
-        return;
       }
+    }
 
-      this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
-      this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
+    if ((now >= this.fadeDelay) && (now < this.fadeEnd)) {
+      const alpha = (this.fadeEnd - now) / this.fadeDuration * this.opacity;
+      this.renderer.domElement.style.opacity = alpha.toFixed(2);
     }
   }
 }
