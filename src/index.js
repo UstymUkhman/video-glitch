@@ -250,6 +250,7 @@ export default class VideoGlitch {
     const slide = this.gui.addFolder('Slide');
 
     const settings = {
+      mode: 'Fixed Effects',
       color: '#000000',
       lines: false,
       angle: 0.0,
@@ -264,6 +265,7 @@ export default class VideoGlitch {
         this.fadeEnd = this.fadeDelay + this.fadeDuration;
 
         this.opacity = this.renderer.domElement.style.opacity;
+        this.glitchUniforms.show.value = 1;
         this.isSliding = true;
       },
 
@@ -320,18 +322,15 @@ export default class VideoGlitch {
       this.glitchUniforms.size.value = size;
     });
 
-    this.gui.add(this.effects, 'onSlide').name('Show On Slide').listen().onChange((onSlide) => {
-      if (this.effects.fixed) {
-        this.glitchUniforms.show.value = 0;
-        this.effects.fixed = false;
-      }
-    });
-
-    this.gui.add(this.effects, 'fixed').name('Fixed Effects').listen().onChange((fixed) => {
-      this.glitchUniforms.show.value = fixed ? 1 : 0;
-
-      if (this.effects.onSlide) {
+    this.gui.add(settings, 'mode', ['Fixed Effects', 'Show On Slide']).onChange((mode) => {
+      if (mode === 'Fixed Effects') {
+        this.glitchUniforms.show.value = 1;
         this.effects.onSlide = false;
+        this.effects.fixed = true;
+      } else {
+        this.glitchUniforms.show.value = 0;
+        this.effects.onSlide = true;
+        this.effects.fixed = false;
       }
     });
 
@@ -390,13 +389,24 @@ export default class VideoGlitch {
     const now = Date.now();
 
     if (this.isSliding) {
+      let reverseProg = 0.0;
       const delta = this.slideEnd - now;
-      const prog = 1 - delta / this.slideDuration;
+      let prog = 1 - delta / this.slideDuration;
+
+      if (this.effects.slide.slideBack) {
+        prog *= 2.0;
+        reverseProg = 2.0 - prog;
+        this.effects.slide.slideBack = reverseProg > 0.0;
+      }
 
       if (prog < 1) {
         this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
         this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
+      } else if (this.effects.slide.slideBack) {
+        this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * reverseProg;
+        this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * reverseProg;
       } else {
+        this.glitchUniforms.show.value = this.effects.fixed ? 1 : 0;
         this.isSliding = false;
       }
     }
