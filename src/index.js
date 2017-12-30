@@ -14,8 +14,8 @@ import Detector from 'three/examples/js/Detector';
 
 export default class VideoGlitch {
   constructor() {
-    this.width = 1920; // 1280;
-    this.height = 1080; // 720;
+    this.width = 1920;
+    this.height = 1080;
 
     this.stats = null;
     this.container = null;
@@ -54,34 +54,27 @@ export default class VideoGlitch {
     this.video.oncanplay = this.init.bind(this);
   }
 
-  init(event) {
-    const fullscreen = typeof event !== 'object';
-
+  init() {
     if (!Detector.webgl) {
       document.body.appendChild(Detector.getWebGLErrorMessage());
       return;
     }
 
-    if (this.renderer && !fullscreen) {
+    if (this.renderer) {
       return;
     }
 
     this.video.width = this.width;
     this.video.height = this.height;
 
-    if (!fullscreen) {
-      this.renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true
-      });
-    }
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true
+    });
 
     this.createWebGLEnvironment();
     this.createVideoGeometry();
-
-    if (!fullscreen) {
-      this.createGlitchParams();
-    }
+    this.createGlitchParams();
 
     this.createBlurShader();
     this.createCopyShader();
@@ -244,8 +237,8 @@ export default class VideoGlitch {
   createControls() {
     const distortion = this.gui.addFolder('Distortion');
     const rgbShift = this.gui.addFolder('RGB Shift');
-    const overlay = this.gui.addFolder('Overlay');
     const noise = this.gui.addFolder('Noise');
+    const overlay = this.gui.addFolder('Overlay');
     const slide = this.gui.addFolder('Slide');
 
     const settings = {
@@ -270,16 +263,13 @@ export default class VideoGlitch {
       },
 
       fullscreen: () => {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.ratio = this.width / this.height;
+        document.body.requestFullscreen =
+          document.body.requestFullscreen ||
+          document.body.msRequestFullscreen ||
+          document.body.mozRequestFullScreen ||
+          document.body.webkitRequestFullscreen;
 
-        this.gui.domElement.remove();
-        this.gui = new dat.GUI();
-
-        document.body.webkitRequestFullscreen();
-        cancelAnimationFrame(this.frame);
-        this.init(true);
+        document.body.requestFullscreen();
       }
     };
 
@@ -291,9 +281,8 @@ export default class VideoGlitch {
       this.effects.rgbShift.angle = angle * Math.PI;
     });
 
-    overlay.add(settings, 'lines').name('Lines Overlay').onChange((lines) => {
-      this.glitchUniforms.lines.value = lines ? 1 : 0;
-    });
+    noise.add(this.effects.glitch, 'snow', 0.0, 1.0).step(0.01).name('Snow');
+    noise.add(this.effects.glitch, 'amount', 0.0, 1.0).step(0.01).name('Amount');
 
     overlay.addColor(settings, 'color').name('Filter Color').onChange((value) => {
       const color = parseInt(`0x${value.slice(1, 7)}`, 16);
@@ -301,8 +290,9 @@ export default class VideoGlitch {
       this.effects.glitch.filterColor = new THREE.Color(color);
     });
 
-    noise.add(this.effects.glitch, 'snow', 0.0, 1.0).step(0.01).name('Snow');
-    noise.add(this.effects.glitch, 'amount', 0.0, 1.0).step(0.01).name('Amount');
+    overlay.add(settings, 'lines').name('Lines Overlay').onChange((lines) => {
+      this.glitchUniforms.lines.value = lines ? 1 : 0;
+    });
 
     slide.add(this.effects.slide, 'xSlide', -1.0, 1.0).step(0.01).name('Horizzontal Slide');
     slide.add(this.effects.slide, 'ySlide', -1.0, 1.0).step(0.01).name('Vertical Slide');
@@ -313,13 +303,14 @@ export default class VideoGlitch {
     slide.add(this.effects.slide, 'slideBack').name('Slide Back');
 
     this.gui.add(this.effects, 'blur', 0.0, 3.0).step(0.01).name('Blur');
-    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
-      this.renderer.domElement.style.opacity = opacity;
-      this.opacity = opacity;
-    });
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
+    });
+
+    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
+      this.renderer.domElement.style.opacity = opacity;
+      this.opacity = opacity;
     });
 
     this.gui.add(settings, 'mode', ['Fixed Effects', 'Show On Slide']).onChange((mode) => {
@@ -334,8 +325,9 @@ export default class VideoGlitch {
       }
     });
 
-    this.gui.add(settings, 'fullscreen').name('Go FullScreen');
     this.gui.add(settings, 'slide').name('Slide');
+    this.gui.add(settings, 'fullscreen').name('Go FullScreen');
+
     this.renderer.domElement.style.opacity = 1;
     this.opacity = 1;
   }
