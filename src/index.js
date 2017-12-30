@@ -14,8 +14,8 @@ import Detector from 'three/examples/js/Detector';
 
 export default class VideoGlitch {
   constructor() {
-    this.width = 1280;
-    this.height = 720;
+    this.width = 1920; // 1280;
+    this.height = 1080; // 720;
 
     this.stats = null;
     this.container = null;
@@ -24,7 +24,6 @@ export default class VideoGlitch {
     this.slideStart = null;
 
     this.slideFade = 0.0;
-    this.isFading = false;
     this.isSliding = false;
     this.slideDuration = 0.0;
 
@@ -265,6 +264,7 @@ export default class VideoGlitch {
         this.fadeEnd = this.fadeDelay + this.fadeDuration;
 
         this.opacity = this.renderer.domElement.style.opacity;
+        this.slideBack = this.effects.slide.slideBack;
         this.glitchUniforms.show.value = 1;
         this.isSliding = true;
       },
@@ -334,7 +334,7 @@ export default class VideoGlitch {
       }
     });
 
-    // this.gui.add(settings, 'fullscreen').name('Go FullScreen');
+    this.gui.add(settings, 'fullscreen').name('Go FullScreen');
     this.gui.add(settings, 'slide').name('Slide');
     this.renderer.domElement.style.opacity = 1;
     this.opacity = 1;
@@ -366,7 +366,7 @@ export default class VideoGlitch {
   }
 
   updateSlideValues() {
-    if (this.effects.fixed || this.effects.onSlide) {
+    if (this.effects.fixed || (this.effects.onSlide && this.isSliding)) {
       this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
       this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
       this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
@@ -386,6 +386,7 @@ export default class VideoGlitch {
       this.glitchUniforms.ySlide.value = this.effects.slide.ySlide;
     }
 
+    let fadeEnd = false;
     const now = Date.now();
 
     if (this.isSliding) {
@@ -393,30 +394,39 @@ export default class VideoGlitch {
       const delta = this.slideEnd - now;
       let prog = 1 - delta / this.slideDuration;
 
-      if (this.effects.slide.slideBack) {
+      if (this.slideBack) {
         prog *= 2.0;
         reverseProg = 2.0 - prog;
-        this.effects.slide.slideBack = reverseProg > 0.0;
+        this.slideBack = reverseProg > 0.0;
       }
 
       if (prog < 1) {
         this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
         this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
-      } else if (this.effects.slide.slideBack) {
+      } else if (this.slideBack) {
         this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * reverseProg;
         this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * reverseProg;
       } else {
-        this.glitchUniforms.show.value = this.effects.fixed ? 1 : 0;
         this.isSliding = false;
       }
     }
 
     if ((now >= this.fadeDelay) && (now < this.fadeEnd)) {
-      const alpha = (this.fadeEnd - now) / this.fadeDuration * this.opacity;
+      const alpha = ((this.fadeEnd - now) / this.fadeDuration * this.opacity).toFixed(2);
 
-      this.renderer.domElement.style.opacity = alpha.toFixed(2);
+      this.renderer.domElement.style.opacity = alpha;
+
+      if (alpha <= 0.03) {
+        this.fadeDuration = 0.0;
+        fadeEnd = true;
+      }
     } else if (!this.isSliding) {
       this.renderer.domElement.style.opacity = this.opacity;
     }
+
+    const isSliding = this.effects.onSlide && this.isSliding;
+    const isFading = (this.fadeDuration > 0.0) && !fadeEnd;
+
+    this.glitchUniforms.show.value = (this.effects.fixed || isSliding || isFading) ? 1 : 0;
   }
 }

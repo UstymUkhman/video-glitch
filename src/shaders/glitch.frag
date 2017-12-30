@@ -90,13 +90,21 @@ void main (void) {
 
   if (show == 1) {
     vec3 result = color.rgb;
+    float lineOpacity = 2.0;
     float yt = vUv.y - time * speed;
 
-    if (lines == 1) {
-      float line = sin(vUv.y * 325.0) * 0.2;
+    if (snow > 0.0) {
+      lineOpacity += 2.0;
+    }
 
-      result = color.rgb * vec3(line) * 5.0;
-      result = color.rgb + clamp(0.5, 0.0, 1.0) * (result - color.rgb);
+    if (shift > 0.0) {
+      lineOpacity += 3.0;
+    }
+
+    if (lines == 1) {
+      float line = sin(vUv.y * 500.0) * 0.2;
+      result = color.rgb * vec3(line) * lineOpacity;
+      result = color.rgb + 1.0 * (result - color.rgb);
     }
 
     if (distortion > 0.0) {
