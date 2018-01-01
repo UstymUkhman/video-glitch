@@ -1,3 +1,4 @@
+// Inspired by Bad TV Shader:
 // http://felixturner.github.io/bad-tv-shader/example/
 
 require('three/examples/js/postprocessing/EffectComposer');
@@ -76,6 +77,7 @@ export default class VideoGlitch {
     this.createVideoGeometry();
     this.createGlitchParams();
 
+    // this.createBadTvShader();
     this.createBlurShader();
     this.createCopyShader();
     this.createGlitchShader();
@@ -130,12 +132,12 @@ export default class VideoGlitch {
         speed: 0.0
       },
 
-      /* badTv: {
+      badTv: {
         distortion2: 1.5,
         distortion: 1.5,
-        rollSpeed: 0.0,
+        rollSpeed: 0.2,
         speed: 0.1
-      }, */
+      },
 
       glitch: {
         filterColor: new THREE.Color(0.0),
@@ -201,7 +203,7 @@ export default class VideoGlitch {
     this.glitch.renderToScreen = true;
   }
 
-  /* createBadTvShader() {
+  createBadTvShader() {
     this.badTvUniforms = {
       distortion2: { type: 'f', value: this.effects.badTv.distortion2 },
       distortion: { type: 'f', value: this.effects.badTv.distortion },
@@ -220,7 +222,7 @@ export default class VideoGlitch {
     );
 
     this.composer.addPass(badTvPass);
-  } */
+  }
 
   createBlurShader() {
     THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur / 512.0;
@@ -343,8 +345,8 @@ export default class VideoGlitch {
 
   render() {
     this.effects.time += 0.1;
-    // this.badTvUniforms.time.value = this.effects.time;
     this.glitchUniforms.time.value = this.effects.time;
+    // this.badTvUniforms.time.value = this.effects.time;
 
     this.updateSlideValues();
 

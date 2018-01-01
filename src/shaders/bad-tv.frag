@@ -30,7 +30,7 @@ float snoise (vec2 v) {
 
   vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
   vec4 x12 = x0.xyxy + C.xxzz;
- 
+
   x12.xy -= i1;
   i = mod289(i);
 
