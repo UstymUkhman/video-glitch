@@ -20,7 +20,6 @@ uniform vec3 filterColor;
 uniform float amount;
 uniform float time;
 uniform float snow;
-uniform int show;
 
 varying vec2 vUv;
 
@@ -85,56 +84,81 @@ vec4 horizontalBlur () {
   return res;
 }
 
+vec4 verticalBlur () {
+  vec4 res = vec4(0.0);
+
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 4.0 * blur)) * 0.051;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 3.0 * blur)) * 0.0918;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 2.0 * blur)) * 0.12245;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 1.0 * blur)) * 0.1531;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y ) ) * 0.1633;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 1.0 * blur)) * 0.1531;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 2.0 * blur)) * 0.12245;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 3.0 * blur)) * 0.0918;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 4.0 * blur)) * 0.051;
+
+  return res;
+}
+
 void main (void) {
   vec4 color = texture2D(tDiffuse, vUv);
 
-  if (show == 1) {
-    vec3 result = color.rgb;
-    float lineOpacity = 2.0;
-    float yt = vUv.y - time * speed;
+  vec3 result = color.rgb;
+  // float lineOpacity = 2.0;
+  // float yt = vUv.y - time * speed;
 
-    if (snow > 0.0) {
-      lineOpacity += 2.0;
-    }
+  // if (snow > 0.0) {
+  //   lineOpacity += 2.0;
+  // }
 
-    if (shift > 0.0) {
-      lineOpacity += 3.0;
-    }
+  // if (shift > 0.0) {
+  //   lineOpacity += 3.0;
+  // }
 
-    if (lines == 1) {
-      float line = sin(vUv.y * 500.0) * 0.2;
-      result = color.rgb * vec3(line) * lineOpacity;
-      result = color.rgb + 1.0 * (result - color.rgb);
-    }
+  if (lines == 1) {
+    float line = sin(vUv.y * 750.0) * 0.5;
+    result = color.rgb * vec3(line) * 5.0; // lineOpacity;
+    result = color.rgb + 1.0 * (result - color.rgb);
+  }
 
-    if (distortion > 0.0) {
-      float offset = snoise(vec2(yt * 50.0, 0.0)) * distortion * 0.001;
-      vec4 dist = texture2D(tDiffuse, vec2(fract(vUv.x + offset), fract(vUv.y)));
-      result = mix(dist.rgb, result, 0.5);
-    }
+  if (distortion > 0.0) {
+    float offset = snoise(vec2((vUv.y - time * speed) * 10.0, 0.0)) * distortion * 0.005;
+    vec4 dist = texture2D(tDiffuse, vec2(fract(vUv.x + offset), fract(vUv.y + offset * 2.0)));
+    // result = mix(dist.rgb, result, 0.5);
+    result = dist.rgb;
 
-    result = mix(result, horizontalBlur().rgb, 0.5);
-    result += result * (filterColor * 2.0);
-    color = vec4(result, 1.0);
+    // gl_FragColor = vec4(result, 1.0);
+  }
 
-    if (snow > 0.0) {
-      float xs = floor(gl_FragCoord.x / snow);
-      float ys = floor(gl_FragCoord.y / snow);
+  float b = blur * 512.0 / 5.0;
 
-      vec2 noise = vec2(xs * time, ys * time);
-      color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount);
-    }
+  result = mix(result, horizontalBlur().rgb, b);
+  result = mix(result, verticalBlur().rgb, b);
 
-    if (shift > 0.0) {
-      vec2 offset = shift * vec2(cos(angle), sin(angle));
+  // result = mix(result, horizontalBlur().rgb, 0.5);
+  // result = mix(result, verticalBlur().rgb, 0.5);
 
-      vec4 rgbR = texture2D(tDiffuse, vUv + offset);
-      vec4 rgbG = texture2D(tDiffuse, vUv);
-      vec4 rgbB = texture2D(tDiffuse, vUv - offset);
+  result += result * (filterColor * 2.0);
+  // color = vec4(result, 1.0);
 
-      vec3 rgb = vec3(rgbR.r, rgbG.g, rgbB.b);
-      color = vec4(mix(rgb, color.rgb, 0.5), 1.0);
-    }
+  // float xs = floor(gl_FragCoord.x / snow);
+  // float ys = floor(gl_FragCoord.y / snow);
+
+  float xs = floor(gl_FragCoord.x / 1.0);
+  float ys = floor(gl_FragCoord.y / 1.0);
+
+  vec2 noise = vec2(xs * time, ys * time);
+  color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount);
+
+  if (shift > 0.0) {
+    vec2 offset = shift * vec2(cos(angle), sin(angle));
+
+    vec4 rgbR = texture2D(tDiffuse, vUv + offset);
+    vec4 rgbG = texture2D(tDiffuse, vUv);
+    vec4 rgbB = texture2D(tDiffuse, vUv - offset);
+
+    vec3 rgb = vec3(rgbR.r, rgbG.g, rgbB.b);
+    color = vec4(mix(rgb, color.rgb, 0.5), 1.0);
   }
 
   gl_FragColor = color;

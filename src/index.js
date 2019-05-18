@@ -1,12 +1,9 @@
-// Inspired by Bad TV Shader:
+// Inspired by Max Payne 3 glitch effects and Bad TV Shader:
 // http://felixturner.github.io/bad-tv-shader/example/
 
 require('three/examples/js/postprocessing/EffectComposer');
 require('three/examples/js/postprocessing/RenderPass');
 require('three/examples/js/postprocessing/ShaderPass');
-require('three/examples/js/postprocessing/MaskPass');
-
-require('three/examples/js/shaders/VerticalBlurShader');
 require('three/examples/js/shaders/CopyShader');
 
 import dat from 'three/examples/js/libs/dat.gui.min';
@@ -77,9 +74,6 @@ export default class VideoGlitch {
     this.createVideoGeometry();
     this.createGlitchParams();
 
-    // this.createBadTvShader();
-    this.createBlurShader();
-    this.createCopyShader();
     this.createGlitchShader();
 
     this.createControls();
@@ -132,13 +126,6 @@ export default class VideoGlitch {
         speed: 0.0
       },
 
-      badTv: {
-        distortion2: 1.5,
-        distortion: 1.5,
-        rollSpeed: 0.2,
-        speed: 0.1
-      },
-
       glitch: {
         filterColor: new THREE.Color(0.0),
         amount: 0.0,
@@ -162,6 +149,8 @@ export default class VideoGlitch {
   }
 
   createGlitchShader() {
+    const copyPass = new THREE.ShaderPass(THREE.CopyShader);
+
     this.glitchUniforms = {
       // General Effects:
       filterColor: { type: 'c', value: this.effects.glitch.filterColor },
@@ -187,8 +176,7 @@ export default class VideoGlitch {
 
       // Sync & Controls:
       time: { type: 'f', value: this.effects.time },
-      tDiffuse: { type: 't', value: null },
-      show: { type: 'i', value: 1 }
+      tDiffuse: { type: 't', value: null }
     };
 
     this.glitch = new THREE.ShaderPass(
@@ -199,41 +187,9 @@ export default class VideoGlitch {
       })
     );
 
-    this.composer.addPass(this.glitch);
+    this.composer.addPass(copyPass);
     this.glitch.renderToScreen = true;
-  }
-
-  createBadTvShader() {
-    this.badTvUniforms = {
-      distortion2: { type: 'f', value: this.effects.badTv.distortion2 },
-      distortion: { type: 'f', value: this.effects.badTv.distortion },
-      rollSpeed: { type: 'f', value: this.effects.badTv.rollSpeed },
-      speed: { type: 'f', value: this.effects.badTv.speed },
-      time: { type: 'f', value: this.effects.time },
-      tDiffuse: { type: 't', value: null }
-    };
-
-    const badTvPass = new THREE.ShaderPass(
-      new THREE.ShaderMaterial({
-        fragmentShader: require('./shaders/bad-tv.frag'),
-        vertexShader: require('./shaders/bad-tv.vert'),
-        uniforms: this.badTvUniforms
-      })
-    );
-
-    this.composer.addPass(badTvPass);
-  }
-
-  createBlurShader() {
-    THREE.VerticalBlurShader.uniforms.v.value = this.effects.blur / 512.0;
-    this.verticalBlur = new THREE.ShaderPass(THREE.VerticalBlurShader);
-    this.composer.addPass(this.verticalBlur);
-  }
-
-  createCopyShader() {
-    this.copy = new THREE.ShaderPass(THREE.CopyShader);
-    this.composer.addPass(this.copy);
-    this.copy.renderToScreen = true;
+    this.composer.addPass(this.glitch);
   }
 
   createControls() {
@@ -244,7 +200,6 @@ export default class VideoGlitch {
     const slide = this.gui.addFolder('Slide');
 
     const settings = {
-      mode: 'Fixed Effects',
       color: '#000000',
       lines: false,
       angle: 0.0,
@@ -260,7 +215,6 @@ export default class VideoGlitch {
 
         this.opacity = this.renderer.domElement.style.opacity;
         this.slideBack = this.effects.slide.slideBack;
-        this.glitchUniforms.show.value = 1;
         this.isSliding = true;
       },
 
@@ -304,7 +258,7 @@ export default class VideoGlitch {
     slide.add(this.effects.slide, 'fadeDelay', 0.0, 10.0).step(0.1).name('Fade Out After');
     slide.add(this.effects.slide, 'slideBack').name('Slide Back');
 
-    this.gui.add(this.effects, 'blur', 0.0, 3.0).step(0.01).name('Blur');
+    this.gui.add(this.effects, 'blur', 0.0, 5.0).step(0.01).name('Blur');
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
@@ -313,18 +267,6 @@ export default class VideoGlitch {
     this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange((opacity) => {
       this.renderer.domElement.style.opacity = opacity;
       this.opacity = opacity;
-    });
-
-    this.gui.add(settings, 'mode', ['Fixed Effects', 'Show On Slide']).onChange((mode) => {
-      if (mode === 'Fixed Effects') {
-        this.glitchUniforms.show.value = 1;
-        this.effects.onSlide = false;
-        this.effects.fixed = true;
-      } else {
-        this.glitchUniforms.show.value = 0;
-        this.effects.onSlide = true;
-        this.effects.fixed = false;
-      }
     });
 
     this.gui.add(settings, 'slide').name('Slide');
@@ -346,7 +288,6 @@ export default class VideoGlitch {
   render() {
     this.effects.time += 0.1;
     this.glitchUniforms.time.value = this.effects.time;
-    // this.badTvUniforms.time.value = this.effects.time;
 
     this.updateSlideValues();
 
@@ -360,67 +301,66 @@ export default class VideoGlitch {
   }
 
   updateSlideValues() {
-    if (this.effects.fixed || (this.effects.onSlide && this.isSliding)) {
-      this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
-      this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
-      this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
+    // if (this.effects.fixed || (this.effects.onSlide && this.isSliding)) {
+    this.glitch.material.uniforms.filterColor.value = this.effects.glitch.filterColor;
+    this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
+    this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
 
-      this.verticalBlur.material.uniforms.v.value = this.effects.blur / 512.0;
-      this.glitch.material.uniforms.blur.value = this.effects.blur / 512.0;
+    this.glitchUniforms.blur.value = this.effects.blur / 512.0;
 
-      this.glitchUniforms.distortion.value = this.effects.distortion.amount;
-      this.glitchUniforms.speed.value = this.effects.distortion.speed;
+    this.glitchUniforms.distortion.value = this.effects.distortion.amount;
+    this.glitchUniforms.speed.value = this.effects.distortion.speed;
 
-      this.glitchUniforms.amount.value = this.effects.glitch.amount;
-      this.glitchUniforms.snow.value = this.effects.glitch.snow;
-    }
+    // console.log(this.glitchUniforms.distortion.value, this.glitchUniforms.speed.value);
 
-    if (this.effects.fixed && !this.isSliding) {
-      this.glitchUniforms.xSlide.value = this.effects.slide.xSlide;
-      this.glitchUniforms.ySlide.value = this.effects.slide.ySlide;
-    }
+    this.glitchUniforms.amount.value = this.effects.glitch.amount;
+    this.glitchUniforms.snow.value = this.effects.glitch.snow;
+    // }
 
-    let fadeEnd = false;
-    const now = Date.now();
+    // if (this.effects.fixed && !this.isSliding) {
+    this.glitchUniforms.xSlide.value = this.effects.slide.xSlide;
+    this.glitchUniforms.ySlide.value = this.effects.slide.ySlide;
+    // }
 
-    if (this.isSliding) {
-      let reverseProg = 0.0;
-      const delta = this.slideEnd - now;
-      let prog = 1 - delta / this.slideDuration;
+    // let fadeEnd = false;
+    // const now = Date.now();
 
-      if (this.slideBack) {
-        prog *= 2.0;
-        reverseProg = 2.0 - prog;
-        this.slideBack = reverseProg > 0.0;
-      }
+    // if (this.isSliding) {
+    //   let reverseProg = 0.0;
+    //   const delta = this.slideEnd - now;
+    //   let prog = 1 - delta / this.slideDuration;
 
-      if (prog < 1) {
-        this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
-        this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
-      } else if (this.slideBack) {
-        this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * reverseProg;
-        this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * reverseProg;
-      } else {
-        this.isSliding = false;
-      }
-    }
+    //   if (this.slideBack) {
+    //     prog *= 2.0;
+    //     reverseProg = 2.0 - prog;
+    //     this.slideBack = reverseProg > 0.0;
+    //   }
 
-    if ((now >= this.fadeDelay) && (now < this.fadeEnd)) {
-      const alpha = ((this.fadeEnd - now) / this.fadeDuration * this.opacity).toFixed(2);
+    //   if (prog < 1) {
+    //     this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * prog;
+    //     this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * prog;
+    //   } else if (this.slideBack) {
+    //     this.glitchUniforms.xSlide.value = this.effects.slide.xSlide * reverseProg;
+    //     this.glitchUniforms.ySlide.value = this.effects.slide.ySlide * reverseProg;
+    //   } else {
+    //     this.isSliding = false;
+    //   }
+    // }
 
-      this.renderer.domElement.style.opacity = alpha;
+    // if ((now >= this.fadeDelay) && (now < this.fadeEnd)) {
+    //   const alpha = ((this.fadeEnd - now) / this.fadeDuration * this.opacity).toFixed(2);
 
-      if (alpha <= 0.03) {
-        this.fadeDuration = 0.0;
-        fadeEnd = true;
-      }
-    } else if (!this.isSliding) {
-      this.renderer.domElement.style.opacity = this.opacity;
-    }
+    //   this.renderer.domElement.style.opacity = alpha;
 
-    const isSliding = this.effects.onSlide && this.isSliding;
-    const isFading = (this.fadeDuration > 0.0) && !fadeEnd;
+    //   if (alpha <= 0.03) {
+    //     this.fadeDuration = 0.0;
+    //     fadeEnd = true;
+    //   }
+    // } else if (!this.isSliding) {
+    //   this.renderer.domElement.style.opacity = this.opacity;
+    // }
 
-    this.glitchUniforms.show.value = (this.effects.fixed || isSliding || isFading) ? 1 : 0;
+    // const isSliding = this.effects.onSlide && this.isSliding;
+    // const isFading = (this.fadeDuration > 0.0) && !fadeEnd;
   }
 }
