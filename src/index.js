@@ -128,8 +128,7 @@ export default class VideoGlitch {
 
       glitch: {
         filterColor: new THREE.Color(0.0),
-        amount: 0.0,
-        snow: 0.0
+        amount: 0.0
       },
 
       rgbShift: {
@@ -155,7 +154,6 @@ export default class VideoGlitch {
       // General Effects:
       filterColor: { type: 'c', value: this.effects.glitch.filterColor },
       amount: { type: 'f', value: this.effects.glitch.amount },
-      snow: { type: 'f', value: this.effects.glitch.snow },
       size: { type: 'f', value: this.effects.size },
 
       // Distortion Effects:
@@ -229,7 +227,7 @@ export default class VideoGlitch {
       }
     };
 
-    distortion.add(this.effects.distortion, 'amount', 0.0, 10.0).step(0.1).name('Amount');
+    distortion.add(this.effects.distortion, 'amount', 0.0, 1.0).step(0.01).name('Amount');
     distortion.add(this.effects.distortion, 'speed', 0.0, 1.0).step(0.01).name('Speed');
 
     rgbShift.add(this.effects.rgbShift, 'amount', 0.0, 1.0).step(0.001).name('Amount');
@@ -237,7 +235,6 @@ export default class VideoGlitch {
       this.effects.rgbShift.angle = angle * Math.PI;
     });
 
-    noise.add(this.effects.glitch, 'snow', 0.0, 1.0).step(0.01).name('Snow');
     noise.add(this.effects.glitch, 'amount', 0.0, 1.0).step(0.01).name('Amount');
 
     overlay.addColor(settings, 'color').name('Filter Color').onChange((value) => {
@@ -258,7 +255,7 @@ export default class VideoGlitch {
     slide.add(this.effects.slide, 'fadeDelay', 0.0, 10.0).step(0.1).name('Fade Out After');
     slide.add(this.effects.slide, 'slideBack').name('Slide Back');
 
-    this.gui.add(this.effects, 'blur', 0.0, 5.0).step(0.01).name('Blur');
+    this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur');
 
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange((size) => {
       this.glitchUniforms.size.value = size;
@@ -306,16 +303,15 @@ export default class VideoGlitch {
     this.glitch.material.uniforms.shift.value = this.effects.rgbShift.amount;
     this.glitch.material.uniforms.angle.value = this.effects.rgbShift.angle;
 
-    this.glitchUniforms.blur.value = this.effects.blur / 512.0;
-
     this.glitchUniforms.distortion.value = this.effects.distortion.amount;
     this.glitchUniforms.speed.value = this.effects.distortion.speed;
 
     // console.log(this.glitchUniforms.distortion.value, this.glitchUniforms.speed.value);
 
     this.glitchUniforms.amount.value = this.effects.glitch.amount;
-    this.glitchUniforms.snow.value = this.effects.glitch.snow;
     // }
+
+    this.glitchUniforms.blur.value = this.effects.blur;
 
     // if (this.effects.fixed && !this.isSliding) {
     this.glitchUniforms.xSlide.value = this.effects.slide.xSlide;

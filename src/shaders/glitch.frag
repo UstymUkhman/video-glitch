@@ -3,23 +3,18 @@ precision highp float;
 
 uniform sampler2D tDiffuse;
 
-// Overlay Uniforms:
 uniform float blur;
 uniform int lines;
 
-// RGB Shift Uniforms:
 uniform float shift;
 uniform float angle;
 
-// Distortion Uniforms:
 uniform float distortion;
 uniform float speed;
 
-// Glitch Uniforms:
 uniform vec3 filterColor;
-uniform float amount;
+uniform float amount; // <-- noise
 uniform float time;
-uniform float snow;
 
 varying vec2 vUv;
 
@@ -66,89 +61,70 @@ float snoise (vec2 v) {
   return 130.0 * dot(m, g);
 }
 
-vec4 horizontalBlur () {
+vec4 horizontalBlur (float amount) {
   vec4 res = vec4(0.0);
 
-  res += texture2D(tDiffuse, vec2(vUv.x - 4.0 * blur, vUv.y)) * 0.051;
-  res += texture2D(tDiffuse, vec2(vUv.x - 3.0 * blur, vUv.y)) * 0.0918;
-  res += texture2D(tDiffuse, vec2(vUv.x - 2.0 * blur, vUv.y)) * 0.12245;
-  res += texture2D(tDiffuse, vec2(vUv.x - 1.0 * blur, vUv.y)) * 0.1531;
+  res += texture2D(tDiffuse, vec2(vUv.x - 4.0 * amount, vUv.y)) * 0.051;
+  res += texture2D(tDiffuse, vec2(vUv.x - 3.0 * amount, vUv.y)) * 0.0918;
+  res += texture2D(tDiffuse, vec2(vUv.x - 2.0 * amount, vUv.y)) * 0.12245;
+  res += texture2D(tDiffuse, vec2(vUv.x - 1.0 * amount, vUv.y)) * 0.1531;
 
   res += texture2D(tDiffuse, vec2(vUv.x, vUv.y)) * 0.1633;
 
-  res += texture2D(tDiffuse, vec2(vUv.x + 1.0 * blur, vUv.y)) * 0.1531;
-  res += texture2D(tDiffuse, vec2(vUv.x + 2.0 * blur, vUv.y)) * 0.12245;
-  res += texture2D(tDiffuse, vec2(vUv.x + 3.0 * blur, vUv.y)) * 0.0918;
-  res += texture2D(tDiffuse, vec2(vUv.x + 4.0 * blur, vUv.y)) * 0.051;
+  res += texture2D(tDiffuse, vec2(vUv.x + 1.0 * amount, vUv.y)) * 0.1531;
+  res += texture2D(tDiffuse, vec2(vUv.x + 2.0 * amount, vUv.y)) * 0.12245;
+  res += texture2D(tDiffuse, vec2(vUv.x + 3.0 * amount, vUv.y)) * 0.0918;
+  res += texture2D(tDiffuse, vec2(vUv.x + 4.0 * amount, vUv.y)) * 0.051;
 
   return res;
 }
 
-vec4 verticalBlur () {
+vec4 verticalBlur (float amount) {
   vec4 res = vec4(0.0);
 
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 4.0 * blur)) * 0.051;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 3.0 * blur)) * 0.0918;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 2.0 * blur)) * 0.12245;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 1.0 * blur)) * 0.1531;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y ) ) * 0.1633;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 1.0 * blur)) * 0.1531;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 2.0 * blur)) * 0.12245;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 3.0 * blur)) * 0.0918;
-  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 4.0 * blur)) * 0.051;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 4.0 * amount)) * 0.051;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 3.0 * amount)) * 0.0918;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 2.0 * amount)) * 0.12245;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y - 1.0 * amount)) * 0.1531;
+
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y)) * 0.1633;
+
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 1.0 * amount)) * 0.1531;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 2.0 * amount)) * 0.12245;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 3.0 * amount)) * 0.0918;
+  res += texture2D(tDiffuse, vec2(vUv.x, vUv.y + 4.0 * amount)) * 0.051;
 
   return res;
 }
 
 void main (void) {
   vec4 color = texture2D(tDiffuse, vUv);
-
   vec3 result = color.rgb;
-  // float lineOpacity = 2.0;
-  // float yt = vUv.y - time * speed;
 
-  // if (snow > 0.0) {
-  //   lineOpacity += 2.0;
-  // }
+  float ba = blur * 5.0 / 512.0;
+  vec4 hb = horizontalBlur(ba);
+  vec4 vb = verticalBlur(ba);
 
-  // if (shift > 0.0) {
-  //   lineOpacity += 3.0;
-  // }
+  result.r = (result.r + hb.r + vb.r) / 3.0;
+  result.g = (result.g + hb.g + vb.g) / 3.0;
+  result.b = (result.b + hb.b + vb.b) / 3.0;
 
-  if (lines == 1) {
-    float line = sin(vUv.y * 750.0) * 0.5;
-    result = color.rgb * vec3(line) * 5.0; // lineOpacity;
-    result = color.rgb + 1.0 * (result - color.rgb);
-  }
+  float offset = snoise(vec2((vUv.y - time * speed) * 10.0, 0.0)) * distortion * 0.05;
+  vec4 dist = texture2D(tDiffuse, vec2(fract(vUv.x + offset), fract(vUv.y + offset * 2.0)));
 
-  if (distortion > 0.0) {
-    float offset = snoise(vec2((vUv.y - time * speed) * 10.0, 0.0)) * distortion * 0.005;
-    vec4 dist = texture2D(tDiffuse, vec2(fract(vUv.x + offset), fract(vUv.y + offset * 2.0)));
-    // result = mix(dist.rgb, result, 0.5);
-    result = dist.rgb;
-
-    // gl_FragColor = vec4(result, 1.0);
-  }
-
-  float b = blur * 512.0 / 5.0;
-
-  result = mix(result, horizontalBlur().rgb, b);
-  result = mix(result, verticalBlur().rgb, b);
-
-  // result = mix(result, horizontalBlur().rgb, 0.5);
-  // result = mix(result, verticalBlur().rgb, 0.5);
+  float dbm = 0.5 - blur / 2.0 + distortion / 2.0;
+  result = mix(result, dist.rgb, dbm);
 
   result += result * (filterColor * 2.0);
-  // color = vec4(result, 1.0);
-
-  // float xs = floor(gl_FragCoord.x / snow);
-  // float ys = floor(gl_FragCoord.y / snow);
 
   float xs = floor(gl_FragCoord.x / 1.0);
   float ys = floor(gl_FragCoord.y / 1.0);
 
   vec2 noise = vec2(xs * time, ys * time);
-  color = vec4(result.rgb, 1.0) + vec4(rand(noise) * amount);
+
+  vec3 nc = vec4(rand(noise) * amount * 2.0).rgb;
+  nc = mix(result, nc, amount / 4.0);
+  color.rgb = nc;
 
   if (shift > 0.0) {
     vec2 offset = shift * vec2(cos(angle), sin(angle));
@@ -159,6 +135,13 @@ void main (void) {
 
     vec3 rgb = vec3(rgbR.r, rgbG.g, rgbB.b);
     color = vec4(mix(rgb, color.rgb, 0.5), 1.0);
+  }
+
+  if (lines == 1) {
+    float line = sin(vUv.y * 750.0) * 0.5;
+    result = color.rgb * vec3(line) * 3.0;
+    result = color.rgb + 1.0 * (result - color.rgb);
+    color = vec4(result.rgb, 1.0);
   }
 
   gl_FragColor = color;
