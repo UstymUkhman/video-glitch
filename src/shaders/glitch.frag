@@ -12,8 +12,8 @@ uniform float angle;
 uniform float distortion;
 uniform float speed;
 
-uniform vec3 filterColor;
-uniform float amount; // <-- noise
+uniform vec3 overlay;
+uniform float noise;
 uniform float time;
 
 varying vec2 vUv;
@@ -115,15 +115,15 @@ void main (void) {
   float dbm = 0.5 - blur / 2.0 + distortion / 2.0;
   result = mix(result, dist.rgb, dbm);
 
-  result += result * (filterColor * 2.0);
+  result += result * (overlay * 2.0);
 
   float xs = floor(gl_FragCoord.x / 1.0);
   float ys = floor(gl_FragCoord.y / 1.0);
 
-  vec2 noise = vec2(xs * time, ys * time);
+  vec2 noisePosition = vec2(xs * time, ys * time);
 
-  vec3 nc = vec4(rand(noise) * amount * 2.0).rgb;
-  nc = mix(result, nc, amount / 4.0);
+  vec3 nc = vec4(rand(noisePosition) * noise * 2.0).rgb;
+  nc = mix(result, nc, noise / 4.0);
   color.rgb = nc;
 
   if (shift > 0.0) {
