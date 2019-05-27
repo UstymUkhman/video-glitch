@@ -110,16 +110,12 @@ export default class VideoGlitch {
       rgbShift: {
         amount: 0.0,
         angle: 0.0
-      } // ,
+      },
 
-      // slide: {
-      //   fade: 1.0,
-      //   xSlide: 0.0,
-      //   ySlide: 0.0,
-      //   duration: 5.0,
-      //   fadeDelay: 0.0,
-      //   slideBack: false
-      // }
+      offset: {
+        x: 0.0,
+        y: 0.0
+      }
     };
   }
 
@@ -133,13 +129,12 @@ export default class VideoGlitch {
       shift: { type: 'f', value: this.effects.rgbShift.amount },
       angle: { type: 'f', value: this.effects.rgbShift.angle },
 
-      // Slide Effects:
-      // xSlide: { type: 'f', value: this.effects.slide.xSlide },
-      // ySlide: { type: 'f', value: this.effects.slide.ySlide },
+      offsetX: { type: 'f', value: this.effects.offset.x },
+      offsetY: { type: 'f', value: this.effects.offset.y },
 
+      blur: { type: 'f', value: this.effects.blur / 512.0 },
       overlay: { type: 'c', value: this.effects.overlay },
       noise: { type: 'f', value: this.effects.noise },
-      blur: { type: 'f', value: this.effects.blur / 512.0 },
 
       lines: { type: 'i', value: ~~this.effects.lines },
       size: { type: 'f', value: this.effects.size },
@@ -164,9 +159,11 @@ export default class VideoGlitch {
   createControls() {
     const distortion = this.gui.addFolder('Distortion');
     const rgbShift = this.gui.addFolder('RGB Shift');
+    const offset = this.gui.addFolder('Offset');
 
-    // distortion.open();
-    // rgbShift.open();
+    distortion.open();
+    rgbShift.open();
+    offset.open();
 
     distortion.add(this.effects.distortion, 'amount', 0.0, 1.0).step(0.01).name('Amount').onChange(amount => {
       this.glitchUniforms.distortion.value = amount;
@@ -184,28 +181,36 @@ export default class VideoGlitch {
       this.glitch.material.uniforms.angle.value = angle * Math.PI;
     });
 
+    offset.add(this.effects.offset, 'x', -1.0, 1.0).step(0.01).name('Horizontal').onChange(x => {
+      this.glitchUniforms.offsetX.value = x;
+    });
+
+    offset.add(this.effects.offset, 'y', -1.0, 1.0).step(0.01).name('Vertical').onChange(y => {
+      this.glitchUniforms.offsetY.value = y;
+    });
+
     this.gui.addColor(this.effects, 'color').name('Overlay').onChange(color => {
       this.glitch.material.uniforms.overlay.value = this.overlay.set(color);
+    });
+
+    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange(alpha => {
+      this.renderer.domElement.style.opacity = alpha;
     });
 
     this.gui.add(this.effects, 'noise', 0.0, 1.0).step(0.01).name('Noise').onChange(noise => {
       this.glitchUniforms.noise.value = noise;
     });
 
-    this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur').onChange(blur => {
-      this.glitchUniforms.blur.value = blur;
-    });
-
     this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange(size => {
       this.glitchUniforms.size.value = size;
     });
 
-    this.gui.add(this.effects, 'lines').name('Lines').onChange(lines => {
-      this.glitchUniforms.lines.value = lines ? 1 : 0;
+    this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur').onChange(blur => {
+      this.glitchUniforms.blur.value = blur;
     });
 
-    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange(alpha => {
-      this.renderer.domElement.style.opacity = alpha;
+    this.gui.add(this.effects, 'lines').name('Lines').onChange(lines => {
+      this.glitchUniforms.lines.value = lines ? 1 : 0;
     });
 
     this.fullscreen = this.gui.add(this, 'toggleFullscreen').name('Enter Fullscreen');

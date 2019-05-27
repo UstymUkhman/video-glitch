@@ -1,9 +1,9 @@
 precision mediump float;
 
-uniform float size;
+uniform float offsetX;
+uniform float offsetY;
 
-uniform float xSlide;
-uniform float ySlide;
+uniform float size;
 
 varying vec2 vUv;
 
@@ -13,8 +13,8 @@ void main (void) {
 
   gl_Position = projectionMatrix * mvPosition;
 
-  // gl_Position.x += xSlide * 2.0;
-  // gl_Position.y += ySlide * 2.0;
+  gl_Position.x += offsetX * 2.0;
+  gl_Position.y += offsetY * 2.0;
 
   gl_PointSize = size;
   vUv = uv;
