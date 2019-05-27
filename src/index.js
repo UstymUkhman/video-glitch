@@ -170,7 +170,7 @@ export default class VideoGlitch {
     });
 
     distortion.add(this.effects.distortion, 'speed', 0.0, 1.0).step(0.01).name('Speed').onChange(speed => {
-      this.glitchUniforms.speed.value = speed / 4.0;
+      this.glitchUniforms.speed.value = speed / 200.0;
     });
 
     rgbShift.add(this.effects.rgbShift, 'amount', 0.0, 1.0).step(0.01).name('Amount').onChange(amount => {
