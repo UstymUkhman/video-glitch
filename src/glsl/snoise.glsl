@@ -1,4 +1,3 @@
-#version 300 es
 #include permute.glsl;
 
 precision highp float;

@@ -1,11 +1,10 @@
-#version 300 es
 precision mediump float;
 
 uniform float offsetX;
 uniform float offsetY;
 uniform float size;
 
-out vec2 vUv;
+varying vec2 vUv;
 
 void main (void) {
   vec4 position = vec4(position, 1.0 / size);

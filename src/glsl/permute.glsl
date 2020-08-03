@@ -1,4 +1,3 @@
-#version 300 es
 #include mod289.glsl;
 
 precision highp float;

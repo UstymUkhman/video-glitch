@@ -1,5 +1,3 @@
-#version 300 es
-
 float random (vec2 co) {
   highp float a = 12.9898;
   highp float b = 78.233;

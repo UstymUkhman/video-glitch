@@ -1,4 +1,3 @@
-#version 300 es
 #include ./blur.frag;
 #include ./random.glsl;
 #include ./snoise.glsl;
@@ -19,12 +18,12 @@ uniform float blur;
 uniform float time;
 uniform int lines;
 
-out vec4 fragColor;
-in vec2 vUv;
+// out vec4 fragColor;
+varying vec2 vUv;
 
 void main (void) {
   float blurStrength = blur * 5.0 / 512.0;
-  vec4 color = texture(tDiffuse, vUv);
+  vec4 color = texture2D(tDiffuse, vUv);
   vec3 result = color.rgb;
 
   vec4 vBlur = verticalBlur(tDiffuse, vUv, blurStrength);
@@ -35,7 +34,7 @@ void main (void) {
   result.b = (result.b + hBlur.b + vBlur.b) / 3.0;
 
   float offset = snoise(vec2((vUv.y - time * speed) * 10.0, 0.0)) * distortion * 0.05;
-  vec4 dist = texture(tDiffuse, vec2(fract(vUv.x + offset), fract(vUv.y + offset * 2.0)));
+  vec4 dist = texture2D(tDiffuse, vec2(fract(vUv.x + offset), fract(vUv.y + offset * 2.0)));
 
   float amount = 0.5 - blur / 2.0 + distortion / 2.0;
   result = mix(result, dist.rgb, amount);
@@ -52,9 +51,9 @@ void main (void) {
   if (shift > 0.0) {
     vec2 offset = shift * vec2(cos(angle), sin(angle));
 
-    vec4 rgbR = texture(tDiffuse, vUv + offset);
-    vec4 rgbG = texture(tDiffuse, vUv);
-    vec4 rgbB = texture(tDiffuse, vUv - offset);
+    vec4 rgbR = texture2D(tDiffuse, vUv + offset);
+    vec4 rgbG = texture2D(tDiffuse, vUv);
+    vec4 rgbB = texture2D(tDiffuse, vUv - offset);
 
     vec3 rgb = vec3(rgbR.r, rgbG.g, rgbB.b);
     color = vec4(mix(rgb, color.rgb, 0.5), 1.0);
@@ -67,5 +66,5 @@ void main (void) {
     color = vec4(result.rgb, 1.0);
   }
 
-  fragColor = color;
+  gl_FragColor = color;
 }

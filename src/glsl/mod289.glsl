@@ -1,4 +1,3 @@
-#version 300 es
 precision highp float;
 
 vec2 mod289 (vec2 x) {
