@@ -1,0 +1,45 @@
+html,
+body {
+  -webkit-text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  font-variant-ligatures: none;
+  text-size-adjust: 100%;
+  font-kerning: none;
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+
+  background-color: #000000;
+  letter-spacing: normal;
+  line-height: normal;
+  overflow: hidden;
+
+  height: 100%;
+  width: 100%;
+
+  padding: 0;
+  margin: 0;
+
+  left: 0;
+  top: 0;
+}
+
+canvas {
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  position: absolute;
+
+  display: block;
+  margin: auto;
+
+  height: 100%;
+  width: 100%;
+  padding: 0;
+
+  left: 50%;
+  top: 50%;
+}
