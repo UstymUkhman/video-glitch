@@ -7,16 +7,16 @@ body {
   text-rendering: optimizeLegibility;
 
   font-variant-ligatures: none;
+  background-color: #000000;
   text-size-adjust: 100%;
   font-kerning: none;
+  overflow: hidden;
+
+  letter-spacing: normal;
+  line-height: normal;
   font-style: normal;
   font-weight: 400;
   font-size: 16px;
-
-  background-color: #000000;
-  letter-spacing: normal;
-  line-height: normal;
-  overflow: hidden;
 
   height: 100%;
   width: 100%;
@@ -28,18 +28,26 @@ body {
   top: 0;
 }
 
+video,
 canvas {
   transform: translate(-50%, -50%);
   pointer-events: none;
+
   position: absolute;
+  object-fit: unset;
 
   display: block;
   margin: auto;
 
-  height: 100%;
-  width: 100%;
-  padding: 0;
-
   left: 50%;
   top: 50%;
+}
+
+.dg.ac {
+  left: auto !important;
+  z-index: 1 !important;
+}
+
+.dg.main.a {
+  margin-right: 0;
 }

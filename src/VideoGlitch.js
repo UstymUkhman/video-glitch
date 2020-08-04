@@ -50,6 +50,7 @@ export default class VideoGlitch {
   createVideoStream (video) {
     this.video = document.createElement('video');
     this.video.oncanplay = this.init.bind(this);
+    document.body.appendChild(this.video);
 
     this.video.height = this.height;
     this.video.width = this.width;
@@ -126,32 +127,31 @@ export default class VideoGlitch {
   createGlitchShader () {
     const copyPass = new ShaderPass(CopyShader);
 
-    this.glitchUniforms = {
-      distortion: { type: 'f', value: this.effects.distortion.amount },
-      speed: { type: 'f', value: this.effects.distortion.speed },
-
-      shift: { type: 'f', value: this.effects.rgbShift.amount },
-      angle: { type: 'f', value: this.effects.rgbShift.angle },
-
-      offsetX: { type: 'f', value: this.effects.offset.x },
-      offsetY: { type: 'f', value: this.effects.offset.y },
-
-      blur: { type: 'f', value: this.effects.blur / 512.0 },
-      overlay: { type: 'c', value: this.effects.overlay },
-      noise: { type: 'f', value: this.effects.noise },
-
-      lines: { type: 'i', value: ~~this.effects.lines },
-      size: { type: 'f', value: this.effects.size },
-
-      time: { type: 'f', value: this.effects.time },
-      tDiffuse: { type: 't', value: null }
-    };
-
     this.glitch = new ShaderPass(
       new ShaderMaterial({
-        uniforms: this.glitchUniforms,
         fragmentShader: fragGlitch,
-        vertexShader: vertGlitch
+        vertexShader: vertGlitch,
+
+        uniforms: {
+          distortion: { type: 'f', value: this.effects.distortion.amount },
+          speed: { type: 'f', value: this.effects.distortion.speed },
+
+          shift: { type: 'f', value: this.effects.rgbShift.amount },
+          angle: { type: 'f', value: this.effects.rgbShift.angle },
+
+          offsetX: { type: 'f', value: this.effects.offset.x },
+          offsetY: { type: 'f', value: this.effects.offset.y },
+
+          blur: { type: 'f', value: this.effects.blur / 512.0 },
+          overlay: { type: 'c', value: this.effects.overlay },
+          noise: { type: 'f', value: this.effects.noise },
+
+          lines: { type: 'i', value: ~~this.effects.lines },
+          size: { type: 'f', value: this.effects.size },
+
+          time: { type: 'f', value: this.effects.time },
+          tDiffuse: { type: 't', value: null }
+        }
       })
     );
 
@@ -159,11 +159,73 @@ export default class VideoGlitch {
     this.composer.addPass(this.glitch);
   }
 
-  createControls () { }
+  createControls () {
+    const distortion = this.gui.addFolder('Distortion');
+    const rgbShift = this.gui.addFolder('RGB Shift');
+    const offset = this.gui.addFolder('Offset');
+
+    distortion.open();
+    rgbShift.open();
+    offset.open();
+
+    distortion.add(this.effects.distortion, 'amount', 0.0, 1.0).step(0.01).name('Amount').onChange(amount => {
+      this.glitch.material.uniforms.distortion.value = amount;
+    });
+
+    distortion.add(this.effects.distortion, 'speed', 0.0, 1.0).step(0.01).name('Speed').onChange(speed => {
+      this.glitch.material.uniforms.speed.value = speed / 200.0;
+    });
+
+    rgbShift.add(this.effects.rgbShift, 'amount', 0.0, 1.0).step(0.01).name('Amount').onChange(amount => {
+      this.glitch.material.uniforms.shift.value = amount;
+    });
+
+    rgbShift.add(this.effects.rgbShift, 'angle', 0.0, 2.0).step(0.01).name('Angle').onChange(angle => {
+      this.glitch.material.uniforms.angle.value = angle * Math.PI;
+    });
+
+    offset.add(this.effects.offset, 'x', -1.0, 1.0).step(0.01).name('Horizontal').onChange(x => {
+      this.glitch.material.uniforms.offsetX.value = x;
+    });
+
+    offset.add(this.effects.offset, 'y', -1.0, 1.0).step(0.01).name('Vertical').onChange(y => {
+      this.glitch.material.uniforms.offsetY.value = y;
+    });
+
+    this.gui.addColor(this.effects, 'color').name('Overlay').onChange(color => {
+      this.glitch.material.uniforms.overlay.value = this.overlay.set(color);
+    });
+
+    this.gui.add(this.effects, 'alpha', 0.0, 1.0).step(0.01).name('Alpha').onChange(alpha => {
+      this.renderer.domElement.style.opacity = alpha;
+    });
+
+    this.gui.add(this.effects, 'noise', 0.0, 1.0).step(0.01).name('Noise').onChange(noise => {
+      this.glitch.material.uniforms.noise.value = noise;
+    });
+
+    this.gui.add(this.effects, 'size', 1.0, 2.0).step(0.01).name('Size').onChange(size => {
+      this.glitch.material.uniforms.size.value = size;
+    });
+
+    this.gui.add(this.effects, 'blur', 0.0, 1.0).step(0.01).name('Blur').onChange(blur => {
+      this.glitch.material.uniforms.blur.value = blur;
+    });
+
+    this.gui.add(this.effects, 'lines').name('Lines').onChange(visible => {
+      this.glitch.material.uniforms.lines.value = visible ? 1 : 0;
+    });
+
+    this.gui.add(this.effects, 'video').name('Video').onChange(visible => {
+      this.video.style.opacity = ~~visible;
+    });
+
+    this.fullscreen = this.gui.add(this, 'toggleFullscreen').name('Enter Fullscreen');
+  }
 
   render (delta) {
     this.frame = requestAnimationFrame(this.render.bind(this));
-    this.glitchUniforms.time.value = delta;
+    this.glitch.material.uniforms.time.value = delta;
     this.composer.render();
   }
 
@@ -182,21 +244,24 @@ export default class VideoGlitch {
   }
 
   resize () {
-    this.width = window.innerWidth;
     this.height = window.innerHeight;
+    this.width = window.innerWidth;
 
-    this.video.width = this.width;
-    this.video.height = this.height;
+    if (this.width > this.height) {
+      this.height = this.width / 16 * 9;
+    } else {
+      this.width = this.height / 9 * 16;
+    }
+
+    this.renderer.setSize(this.width, this.height);
+    this.video.style.height = `${this.height}px`;
+    this.video.style.width = `${this.width}px`;
 
     this.ratio = this.width / this.height;
+    this.camera.updateProjectionMatrix();
+    this.camera.aspect = this.ratio;
 
-    if (this.renderer) {
-      this.renderer.setSize(this.width, this.height);
-    }
-
-    if (this.camera) {
-      this.camera.aspect = this.ratio;
-      this.camera.updateProjectionMatrix();
-    }
+    this.video.height = this.height;
+    this.video.width = this.width;
   }
 }

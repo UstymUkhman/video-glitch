@@ -1,6 +1,6 @@
-#include ./blur.frag;
-#include ./random.glsl;
-#include ./snoise.glsl;
+#include blur.frag;
+#include random.glsl;
+#include snoise.glsl;
 
 precision highp float;
 
@@ -18,7 +18,6 @@ uniform float blur;
 uniform float time;
 uniform int lines;
 
-// out vec4 fragColor;
 varying vec2 vUv;
 
 void main (void) {
