@@ -1,6 +1,6 @@
-# [video-glitch](http://54.93.165.244/experiments/video-glitch) #
+# [video-glitch](http://35.158.218.205/experiments/video-glitch/) #
 
->  WebGL video glitch effects.
+>  WebGL video glitch effects
 
 ![](./public/preview.gif)
 
