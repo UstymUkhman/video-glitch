@@ -1,4 +1,4 @@
-# [video-glitch](http://35.158.218.205/experiments/video-glitch/) #
+# [video-glitch](https://ustymukhman.github.io/video-glitch/public/) #
 
 >  WebGL video glitch effects
 
